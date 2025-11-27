@@ -53,10 +53,17 @@ class InMemorySessionStore implements ISessionStore {
       customerId,
       accountName: account,
       collectionUuid:
-        overrides?.collectionUuid ?? existing?.collectionUuid ?? this.defaultCollection ?? null,
-      backendUuid: overrides?.backendUuid ?? existing?.backendUuid ?? null,
+        overrides?.collectionUuid !== undefined
+          ? overrides.collectionUuid
+          : existing?.collectionUuid ?? this.defaultCollection ?? null,
+      backendUuid:
+        overrides?.backendUuid !== undefined
+          ? overrides.backendUuid
+          : existing?.backendUuid ?? null,
       frontendContextUuid:
-        overrides?.frontendContextUuid ?? existing?.frontendContextUuid ?? null,
+        overrides?.frontendContextUuid !== undefined
+          ? overrides.frontendContextUuid
+          : existing?.frontendContextUuid ?? null,
       language: overrides?.language || existing?.language || "en-US",
       mode: overrides?.mode || existing?.mode || "auto",
       sources: overrides?.sources || existing?.sources || "web",
@@ -116,10 +123,17 @@ class PostgresSessionStore implements ISessionStore {
     }
 
     const collectionUuid =
-      overrides?.collectionUuid ?? existing?.collectionUuid ?? this.defaultCollection ?? null;
-    const backendUuid = overrides?.backendUuid ?? existing?.backendUuid ?? null;
+      overrides?.collectionUuid !== undefined
+        ? overrides.collectionUuid
+        : existing?.collectionUuid ?? this.defaultCollection ?? null;
+    const backendUuid =
+      overrides?.backendUuid !== undefined
+        ? overrides.backendUuid
+        : existing?.backendUuid ?? null;
     const frontendContextUuid =
-      overrides?.frontendContextUuid ?? existing?.frontendContextUuid ?? null;
+      overrides?.frontendContextUuid !== undefined
+        ? overrides.frontendContextUuid
+        : existing?.frontendContextUuid ?? null;
     const mode: QueryMode = overrides?.mode || existing?.mode || "auto";
     const language = overrides?.language || existing?.language || "en-US";
     const sources = overrides?.sources || existing?.sources || "web";

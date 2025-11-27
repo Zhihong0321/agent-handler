@@ -1051,15 +1051,30 @@ function createChunker(maxSize: number, onChunk: (text: string) => void) {
   };
 }
 
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Rejection:", err);
+  process.exit(1);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  process.exit(1);
+});
+
 async function start() {
-  const server = await buildServer();
-  server.listen({ host: config.host, port: config.port }, (err, address) => {
-    if (err) {
-      server.log.error(err);
-      process.exit(1);
-    }
-    server.log.info(`Server listening at ${address}`);
-  });
+  try {
+    const server = await buildServer();
+    server.listen({ host: config.host, port: config.port }, (err, address) => {
+      if (err) {
+        server.log.error(err);
+        process.exit(1);
+      }
+      server.log.info(`Server listening at ${address}`);
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  }
 }
 
 start();

@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import { config } from "./config";
 
 let pool: Pool | null = null;
+let initPromise: Promise<void> | null = null;
 
 export function getPool() {
   if (pool) return pool;
@@ -17,7 +18,12 @@ export async function ensureTables() {
   const client = getPool();
   if (!client) return;
 
-  await client.query(`
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    console.log("Initializing database tables...");
+    try {
+      await client.query(`
     CREATE TABLE IF NOT EXISTS customers (
       customer_id TEXT PRIMARY KEY,
       profile_name TEXT,
@@ -100,4 +106,14 @@ export async function ensureTables() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+      console.log("Database tables initialized successfully");
+    } catch (err) {
+      console.error("Failed to initialize database tables", err);
+      // Reset promise so we can retry if needed, though usually we crash here
+      initPromise = null;
+      throw err;
+    }
+  })();
+
+  return initPromise;
 }

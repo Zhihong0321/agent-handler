@@ -406,7 +406,9 @@
             div.className = `bubble ${role}`;
             div.textContent = text;
             els.messages.appendChild(div);
-            els.messages.scrollTop = els.messages.scrollHeight;
+            requestAnimationFrame(() => {
+                div.scrollIntoView({ behavior: "smooth", block: "end" });
+            });
         }
 
         function setStatePill(state) {
