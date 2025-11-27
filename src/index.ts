@@ -92,7 +92,11 @@ async function buildServer() {
 
   fastify.get("/api/wrapper/accounts", async (request, reply) => {
     try {
-      const accounts = await perplexityClient.listAccounts();
+      const result = await perplexityClient.listAccounts();
+      const accounts = Object.entries((result as any).accounts || {}).map(([key, val]) => ({
+        ...(val as any),
+        account_name: key,
+      }));
       return { accounts };
     } catch (err) {
       const status = (err as any)?.response?.status;
@@ -136,7 +140,8 @@ async function buildServer() {
       return { error: "accountName is required (set query param or DEFAULT_ACCOUNT_NAME)" };
     }
     try {
-      const spaces = await perplexityClient.listCollections(accountName);
+      const result = await perplexityClient.listCollections(accountName);
+      const spaces = (result as any).data || [];
       return { spaces };
     } catch (err) {
       const status = (err as any)?.response?.status;
