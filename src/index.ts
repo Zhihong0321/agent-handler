@@ -38,12 +38,15 @@ async function buildServer() {
   fastify.get("/health", async () => {
     const dbStatus = await checkDatabase();
     const status = dbStatus.status === "ok" ? "ok" : "degraded";
+    const wrapperStatus = await checkWrapperAccount();
     return {
       status,
       db: dbStatus,
       store: sessionStore.kind,
       actions: actionStore.kind,
       agents: agentStore.kind,
+      wrapper: wrapperStatus,
+      defaultAccount: config.defaultAccount || null,
     };
   });
 
@@ -859,5 +862,17 @@ async function checkDatabase() {
     return { status: "ok" };
   } catch (err) {
     return { status: "error", message: (err as Error).message };
+  }
+}
+
+async function checkWrapperAccount() {
+  if (!config.defaultAccount) {
+    return { status: "missing", message: "DEFAULT_ACCOUNT_NAME not set" };
+  }
+  try {
+    await perplexityClient.testAccount(config.defaultAccount);
+    return { status: "ok", account: config.defaultAccount };
+  } catch (err) {
+    return { status: "error", account: config.defaultAccount, message: (err as Error).message };
   }
 }
