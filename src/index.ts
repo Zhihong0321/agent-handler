@@ -882,8 +882,16 @@ async function handleAsyncQuery(
           chunker.push(text);
         }
 
-        const backendUuid = parsed.backend_uuid as string | undefined;
-        const frontendContextUuid = parsed.frontend_context_uuid as string | undefined;
+        let backendUuid = parsed.backend_uuid as string | undefined;
+        let frontendContextUuid = parsed.frontend_context_uuid as string | undefined;
+
+        // Support new wrapper format (nested in content)
+        if (!backendUuid && !frontendContextUuid && parsed.content && typeof parsed.content === "object") {
+          const content = parsed.content as Record<string, unknown>;
+          backendUuid = content.backend_uuid as string | undefined;
+          frontendContextUuid = content.frontend_context_uuid as string | undefined;
+        }
+
         if (backendUuid || frontendContextUuid) {
           // Push promise to tracking array instead of fire-and-forget
           const updatePromise = sessionStore.updateThreadIdentifiers(
@@ -1038,6 +1046,12 @@ function extractAnswer(payload: unknown) {
     const data = payload as Record<string, unknown>;
     if (typeof data.answer === "string") return data.answer;
     if (typeof data.output_text === "string") return data.output_text;
+    // Check for "content" wrapper (New API format)
+    if (typeof data.content === "object" && data.content && "answer" in (data.content as any)) {
+      const nested = (data.content as Record<string, unknown>).answer;
+      if (typeof nested === "string") return nested;
+    }
+    // Check for "data" wrapper (Old/Legacy format)
     if (typeof data.data === "object" && data.data && "answer" in (data.data as any)) {
       const nested = (data.data as Record<string, unknown>).answer;
       if (typeof nested === "string") return nested;
