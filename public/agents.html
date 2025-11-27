@@ -334,29 +334,25 @@
 
     saveAgentBtn.addEventListener("click", async () => {
       try {
+        const payload = {
+          name: agentName.value,
+          accountName: agentAccount.value || defaultAccount,
+          collectionUuid: agentCollection.value || undefined,
+          mode: agentMode.value || undefined,
+          sources: agentSources.value || undefined,
+          language: agentLanguage.value || undefined,
+          model: agentModel.value || undefined,
+          answerOnly: agentAnswerOnly.checked,
+          incognito: agentIncognito.checked,
+        };
+        if (!payload.accountName) {
+          alert("Account name is required. Set DEFAULT_ACCOUNT_NAME or select an account.");
+          return;
+        }
         const res = await fetch("/api/agents", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          const payload = {
-            name: agentName.value,
-            accountName: agentAccount.value || defaultAccount,
-            collectionUuid: agentCollection.value || undefined,
-            mode: agentMode.value || undefined,
-            sources: agentSources.value || undefined,
-            language: agentLanguage.value || undefined,
-            model: agentModel.value || undefined,
-            answerOnly: agentAnswerOnly.checked,
-            incognito: agentIncognito.checked,
-          };
-          if (!payload.accountName) {
-            alert("Account name is required. Set DEFAULT_ACCOUNT_NAME or select an account.");
-            return;
-          }
-          const res = await fetch("/api/agents", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         log(data);
