@@ -314,63 +314,6 @@
         <button type="button" class="secondary" id="load-threads">Refresh threads</button>
       </div>
       <div class="thread-list" id="threads"></div>
-      <hr style="border: 1px solid var(--border); margin: 16px 0;" />
-      <div class="field">
-        <label>Create Agent</label>
-        <div class="row">
-          <div class="field">
-            <label for="agent-name">Name</label>
-            <input id="agent-name" placeholder="Agent name" />
-          </div>
-          <div class="field">
-            <label for="agent-account">Account</label>
-            <input id="agent-account" placeholder="account_name" />
-          </div>
-          <div class="field">
-            <label for="agent-collection">Space (collection_uuid)</label>
-            <input id="agent-collection" placeholder="optional" />
-          </div>
-        </div>
-        <div class="row">
-          <div class="field">
-            <label for="agent-mode">Mode</label>
-            <select id="agent-mode">
-              <option value="">(use default)</option>
-              <option value="auto">auto</option>
-              <option value="writing">writing</option>
-              <option value="coding">coding</option>
-              <option value="research">research</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="agent-sources">Sources</label>
-            <input id="agent-sources" placeholder="web,scholar,social" />
-          </div>
-          <div class="field">
-            <label for="agent-language">Language</label>
-            <input id="agent-language" placeholder="en-US" />
-          </div>
-        </div>
-        <div class="row">
-          <div class="field">
-            <label for="agent-model">Model</label>
-            <input id="agent-model" placeholder="optional model name" />
-          </div>
-          <div class="field">
-            <label class="toggle">
-              <input type="checkbox" id="agent-answer-only" checked />
-              Answer only
-            </label>
-          </div>
-          <div class="field">
-            <label class="toggle">
-              <input type="checkbox" id="agent-incognito" />
-              Incognito
-            </label>
-          </div>
-        </div>
-        <button type="button" id="create-agent">Save Agent</button>
-      </div>
     </section>
   </main>
   <script>
@@ -399,16 +342,7 @@
     const threadsContainer = document.getElementById("threads");
     const agentSelect = document.getElementById("agent-select");
     const refreshAgentsBtn = document.getElementById("refresh-agents");
-    const createAgentBtn = document.getElementById("create-agent");
-    const agentNameInput = document.getElementById("agent-name");
-    const agentAccountInput = document.getElementById("agent-account");
-    const agentCollectionInput = document.getElementById("agent-collection");
-    const agentModeInput = document.getElementById("agent-mode");
-    const agentSourcesInput = document.getElementById("agent-sources");
-    const agentLanguageInput = document.getElementById("agent-language");
-    const agentModelInput = document.getElementById("agent-model");
-    const agentAnswerOnlyInput = document.getElementById("agent-answer-only");
-    const agentIncognitoInput = document.getElementById("agent-incognito");
+    // Removed createAgentBtn and related inputs as per instruction
 
     const savedId = localStorage.getItem("customerId") || `local-${Math.random().toString(16).slice(2,8)}`;
     customerInput.value = savedId;
@@ -633,39 +567,7 @@
       });
     });
 
-    createAgentBtn.addEventListener("click", async () => {
-      try {
-        const res = await fetch("/api/agents", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: agentNameInput.value,
-            accountName: agentAccountInput.value,
-            collectionUuid: agentCollectionInput.value || undefined,
-            mode: agentModeInput.value || undefined,
-            sources: agentSourcesInput.value || undefined,
-            language: agentLanguageInput.value || undefined,
-            model: agentModelInput.value || undefined,
-            answerOnly: agentAnswerOnlyInput.checked,
-            incognito: agentIncognitoInput.checked,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          appendBubble(`Agent error: ${data.error || res.statusText}`, "bot");
-        } else if (data.agent) {
-          appendBubble("Agent saved", "bot");
-          await loadAgents();
-          agentSelect.value = data.agent.id;
-        } else if (data.error) {
-          appendBubble(`Agent error: ${data.error}`, "bot");
-        }
-        log(data);
-      } catch (err) {
-        appendBubble("Agent save failed", "bot");
-        log({ error: err.message });
-      }
-    });
+    // Removed createAgentBtn listener as per instruction
 
     async function loadAgents() {
       try {
