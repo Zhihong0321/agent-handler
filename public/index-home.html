@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Handler</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --border: #1f2937;
+      --accent: #38bdf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #1e293b 0, #0f172a 45%),
+                  radial-gradient(circle at 80% 10%, #0ea5e9 0, transparent 35%),
+                  radial-gradient(circle at 60% 70%, #10b981 0, transparent 25%),
+                  #0f172a;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    h1 { margin: 0; font-size: 28px; }
+    p { color: var(--muted); max-width: 640px; text-align: center; }
+    .grid {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      width: min(960px, 100%);
+    }
+    .card {
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card h3 { margin: 0; }
+    .card p { margin: 0; text-align: left; }
+    a.button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 600;
+      background: linear-gradient(135deg, #38bdf8, #22d3ee);
+      color: #0b1222;
+      box-shadow: 0 10px 25px rgba(34, 211, 238, 0.35);
+    }
+    a.secondary {
+      background: #0b1222;
+      color: var(--text);
+      box-shadow: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Agent Handler</h1>
+  <p>Manage your Perplexity agents, spaces, and chat threads from one place. Choose where you want to go.</p>
+  <div class="grid">
+    <div class="card">
+      <h3>Playground</h3>
+      <p>Chat with agents, manage threads, and test action parsing.</p>
+      <a class="button" href="/playground">Open Playground</a>
+    </div>
+    <div class="card">
+      <h3>Agent Manager</h3>
+      <p>Create/edit agents, list wrapper accounts and spaces, and run quick test calls.</p>
+      <a class="button secondary" href="/agents">Open Agent Manager</a>
+    </div>
+  </div>
+</body>
+</html>

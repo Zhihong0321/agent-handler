@@ -64,6 +64,12 @@ async function buildServer() {
     };
   });
 
+  fastify.get("/", async (_, reply) => {
+    const homePath = path.join(__dirname, "..", "public", "index-home.html");
+    const html = await readFile(homePath, "utf8");
+    reply.type("text/html").send(html);
+  });
+
   fastify.get("/playground", async (_, reply) => {
     const playgroundPath = path.join(__dirname, "..", "public", "index.html");
     const html = await readFile(playgroundPath, "utf8");
