@@ -562,7 +562,12 @@ async function handleSyncQuery(
     return { error: "session is handed off; reset to resume bot" };
   }
 
-  await safeLogMessage(body.customerId, "user", body.message, session.frontendContextUuid || undefined);
+  // Use the PRE-CALCULATED thread ID from the session/merge logic as the source of truth
+  // If this is null, it means it's a new thread and the API will generate one.
+  // But for tester flow, we usually have one.
+  const currentThreadId = merged.frontendContextUuid || session.frontendContextUuid;
+
+  await safeLogMessage(body.customerId, "user", body.message, currentThreadId || undefined);
 
   request.log.info(
     {
@@ -620,7 +625,7 @@ async function handleSyncQuery(
         body.customerId,
         "action",
         JSON.stringify(actionResult.action),
-        session.frontendContextUuid || undefined,
+        currentThreadId || undefined,
       );
     }
   }
@@ -631,14 +636,16 @@ async function handleSyncQuery(
     (response as QueryResponsePayload).frontend_context_uuid as string | undefined,
   );
 
-  // Duplicate block removed - moved to end of function with fallback
+  // Check if API returned a NEW thread ID (e.g. if currentThreadId was null)
+  const responseThreadId = (response as QueryResponsePayload).frontend_context_uuid as string | undefined;
+  const effectiveThreadId = currentThreadId || responseThreadId;
 
   request.log.info(
     {
       event: "perplexity.response.sync",
       customerId: body.customerId,
       backendUuid: (response as QueryResponsePayload).backend_uuid,
-      frontendContextUuid: (response as QueryResponsePayload).frontend_context_uuid,
+      frontendContextUuid: responseThreadId,
       raw: response,
       validation: { status: "not_validated" },
     },
@@ -650,17 +657,16 @@ async function handleSyncQuery(
       body.customerId,
       "assistant",
       answer,
-      ((response as QueryResponsePayload).frontend_context_uuid as string | undefined) || session.frontendContextUuid || undefined,
+      effectiveThreadId || undefined,
     );
   }
 
   // Save to tester history if applicable
-  const finalThreadUuid = (response as QueryResponsePayload).frontend_context_uuid || session.frontendContextUuid;
-  if (finalThreadUuid) {
+  if (effectiveThreadId) {
     await saveTesterThread(
       getPool(),
       body.customerId,
-      finalThreadUuid as string,
+      effectiveThreadId as string,
       null // Do not overwrite title
     );
   }
@@ -691,7 +697,10 @@ async function handleAsyncQuery(
 
   const query = body.parseActions ? buildActionPrompt(body.message) : body.message;
 
-  await safeLogMessage(body.customerId, "user", body.message, session.frontendContextUuid || undefined);
+  // Source of truth: The ID we intend to use for this request
+  const currentThreadId = merged.frontendContextUuid || session.frontendContextUuid;
+
+  await safeLogMessage(body.customerId, "user", body.message, currentThreadId || undefined);
 
   request.log.info(
     {
@@ -777,25 +786,37 @@ async function handleAsyncQuery(
     if (status === "done") {
       const backendUuid =
         (lastPayload as QueryResponsePayload | null)?.backend_uuid || session.backendUuid;
-      const frontendContextUuid =
-        (lastPayload as QueryResponsePayload | null)?.frontend_context_uuid ||
-        session.frontendContextUuid;
       
-      // ...
+      // Source of truth logic: Use API response if new, otherwise session/merged
+      const responseThreadId = (lastPayload as QueryResponsePayload | null)?.frontend_context_uuid;
+      const effectiveThreadId = responseThreadId || currentThreadId; // using captured currentThreadId from closure
+
+      request.log.info(
+        {
+          event: "perplexity.response.async",
+          customerId: body.customerId,
+          backendUuid,
+          frontendContextUuid: effectiveThreadId,
+          raw: lastPayload,
+          action: actionResult,
+          validation: { status: "not_validated" },
+        },
+        "perplexity async response complete",
+      );
       if (collected) {
         await safeLogMessage(
           body.customerId,
           "assistant",
           collected,
-          frontendContextUuid || undefined,
+          effectiveThreadId || undefined,
         );
       }
       
-      if (frontendContextUuid) {
+      if (effectiveThreadId) {
          await saveTesterThread(
            getPool(),
            body.customerId,
-           frontendContextUuid,
+           effectiveThreadId as string,
            null // Do not overwrite title
          );
       }
