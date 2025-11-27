@@ -665,6 +665,10 @@
         if (data.agents) {
           agents = data.agents;
           populateAgents();
+        } else if (Array.isArray(data)) {
+             // fallback if the API returns the array directly (legacy behavior check)
+             agents = data;
+             populateAgents();
         } else if (data.error) {
           appendBubble(`Agent load error: ${data.error}`, "bot");
         }
