@@ -772,10 +772,20 @@ async function handleAsyncQuery(
 
   let completed = false;
   let lastPayload: Record<string, unknown> | null = null;
+  // Track pending DB updates to ensure SSOT consistency before finalizing
+  const dbUpdatePromises: Promise<void>[] = [];
 
   const finalize = async (status: "done" | "error", detail?: string) => {
     if (completed) return;
     completed = true;
+    
+    // CRITICAL: Wait for all DB updates to ensure Postgres is the Source of Truth
+    if (dbUpdatePromises.length > 0) {
+      await Promise.all(dbUpdatePromises).catch(err => 
+        request.log.error({ err }, "failed to complete pending db updates in finalize")
+      );
+    }
+
     chunker.flush();
     let actionResult = null;
     if (status === "done" && body.parseActions && collected) {
@@ -800,6 +810,7 @@ async function handleAsyncQuery(
       );
     }
     if (status === "done") {
+      // Now safe to read from DB as we awaited updates
       const sessionState = await sessionStore.get(body.customerId);
       sendEvent("done", { session: sessionState, action: actionResult });
     } else {
@@ -874,11 +885,18 @@ async function handleAsyncQuery(
         const backendUuid = parsed.backend_uuid as string | undefined;
         const frontendContextUuid = parsed.frontend_context_uuid as string | undefined;
         if (backendUuid || frontendContextUuid) {
-          void Promise.resolve(
-            sessionStore.updateThreadIdentifiers(body.customerId, backendUuid, frontendContextUuid),
-          ).catch((err) => {
+          // Push promise to tracking array instead of fire-and-forget
+          const updatePromise = sessionStore.updateThreadIdentifiers(
+            body.customerId, 
+            backendUuid, 
+            frontendContextUuid
+          );
+          // Handle potential rejection here to avoid unhandled rejection crashing process, 
+          // though Promise.all in finalize will also catch it.
+          const safePromise = Promise.resolve(updatePromise).catch((err) => {
             request.log.error({ err, customerId: body.customerId }, "failed to persist thread IDs");
           });
+          dbUpdatePromises.push(safePromise);
         }
       } catch {
         if (dataStr) {
