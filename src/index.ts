@@ -650,7 +650,7 @@ async function handleSyncQuery(
       body.customerId,
       "assistant",
       answer,
-      (response as QueryResponsePayload).frontend_context_uuid as string | undefined,
+      ((response as QueryResponsePayload).frontend_context_uuid as string | undefined) || session.frontendContextUuid || undefined,
     );
   }
 
@@ -780,18 +780,8 @@ async function handleAsyncQuery(
       const frontendContextUuid =
         (lastPayload as QueryResponsePayload | null)?.frontend_context_uuid ||
         session.frontendContextUuid;
-      request.log.info(
-        {
-          event: "perplexity.response.async",
-          customerId: body.customerId,
-          backendUuid,
-          frontendContextUuid,
-          raw: lastPayload,
-          action: actionResult,
-          validation: { status: "not_validated" },
-        },
-        "perplexity async response complete",
-      );
+      
+      // ...
       if (collected) {
         await safeLogMessage(
           body.customerId,
