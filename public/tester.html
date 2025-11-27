@@ -54,6 +54,7 @@
       display: flex; align-items: center; justify-content: space-between;
       border-bottom: 1px solid var(--border);
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      flex: 0 0 auto; /* Prevent header from shrinking */
     }
     .menu-btn { font-size: 24px; cursor: pointer; background: none; border: none; color: var(--text); padding: 0; }
     .agent-info { font-size: 16px; font-weight: 600; text-align: center; flex: 1; }
@@ -61,14 +62,15 @@
 
     /* Chat Area */
     main { 
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
+      flex: 1 1 auto; /* Allow grow and shrink */
+      overflow-y: auto; 
+      padding: 16px; 
+      display: flex; 
+      flex-direction: column; 
       gap: 12px;
       -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
       min-height: 0; /* Crucial for flex containers */
+      overscroll-behavior: contain; /* Prevent body scroll chaining */
     }
     .bubble {
       max-width: 85%;
@@ -78,6 +80,7 @@
       line-height: 1.4;
       word-wrap: break-word;
       position: relative;
+      flex-shrink: 0; /* Prevent bubbles from being squashed */
     }
     .bubble.user {
       align-self: flex-end;
@@ -99,7 +102,7 @@
       padding-bottom: max(10px, env(safe-area-inset-bottom));
       display: flex; gap: 10px;
       border-top: 1px solid var(--border);
-      flex-shrink: 0; /* Prevent footer from shrinking */
+      flex: 0 0 auto; /* Prevent footer from shrinking */
       position: relative; /* Ensure z-index works if needed */
       z-index: 10;
     }
