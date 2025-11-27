@@ -12,6 +12,9 @@
       --accent: #38bdf8;
       --muted: #6b7280;
       --border: #1f2937;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --success: #10b981;
     }
     * { box-sizing: border-box; }
     body {
@@ -58,14 +61,18 @@
       padding: 16px;
       backdrop-filter: blur(10px);
       box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      display: flex;
+      flex-direction: column;
     }
     .messages {
-      height: 60vh;
+      flex: 1;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 10px;
       padding-right: 6px;
+      min-height: 300px;
+      max-height: 65vh;
     }
     .bubble {
       padding: 12px 14px;
@@ -115,6 +122,12 @@
       box-shadow: 0 10px 25px rgba(34, 211, 238, 0.35);
     }
     button:active { transform: translateY(1px); box-shadow: none; }
+    button.secondary {
+      background: #0b1222;
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
     .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
     .field label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
     .field input, .field select {
@@ -138,6 +151,7 @@
       gap: 10px;
       max-height: 260px;
       overflow: auto;
+      margin-top: 12px;
     }
     .thread-card {
       background: #0b1222;
@@ -148,28 +162,37 @@
       flex-direction: column;
       gap: 6px;
     }
-    .thread-card h4 {
-      margin: 0;
-      font-size: 13px;
-      color: var(--text);
-    }
+    .thread-card h4 { margin: 0; font-size: 13px; color: var(--text); }
     .thread-card small { color: var(--muted); word-break: break-all; }
-    .thread-card button {
-      align-self: flex-start;
-      padding: 6px 10px;
-      font-size: 12px;
-      border-radius: 8px;
-      box-shadow: none;
+    
+    /* Modal Styles */
+    dialog {
+      background: #111827;
+      color: var(--text);
+      border: 1px solid var(--accent);
+      border-radius: 14px;
+      padding: 0;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     }
-    .agent-card {
-      background: #0b1222;
-      border: 1px solid var(--border);
-      border-radius: 10px;
+    dialog::backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); }
+    .modal-content { padding: 20px; }
+    .modal-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; margin: 15px 0; }
+    .agent-btn {
+      text-align: left;
       padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0b1222;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.2s;
     }
+    .agent-btn:hover { border-color: var(--accent); }
+    .agent-btn strong { display: block; }
+    .agent-btn small { color: var(--muted); }
+
     .logs {
       background: #0b1222;
       border: 1px solid var(--border);
@@ -177,38 +200,30 @@
       padding: 12px;
       max-height: 200px;
       overflow: auto;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-family: "SFMono-Regular", Consolas, monospace;
       font-size: 12px;
+      margin-top: 12px;
     }
-    .actions { display: flex; gap: 10px; align-items: center; }
-    .secondary {
-      background: #0b1222;
-      color: var(--text);
-      border: 1px solid var(--border);
-      box-shadow: none;
-    }
-    .toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--muted);
-    }
+    .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
     .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 10px;
-      background: #0b1222;
-      border: 1px solid var(--border);
-      font-size: 12px;
-      color: var(--muted);
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+      border-radius: 10px; background: #0b1222; border: 1px solid var(--border);
+      font-size: 12px; color: var(--muted);
     }
-    .badge.positive { border-color: rgba(16,185,129,0.5); color: #10b981; }
-    .badge.warning { border-color: rgba(234,179,8,0.5); color: #eab308; }
-    .badge.danger { border-color: rgba(239,68,68,0.5); color: #ef4444; }
-    .label-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .badge.positive { border-color: rgba(16,185,129,0.5); color: var(--success); }
+    .badge.warning { border-color: rgba(234,179,8,0.5); color: var(--warning); }
+    .badge.danger { border-color: rgba(239,68,68,0.5); color: var(--danger); }
+    
+    .agent-selection {
+        display: flex; gap: 10px;
+        background: #0b1222; border: 1px solid var(--border); border-radius: 10px;
+        padding: 5px;
+    }
+    #selected-agent-display {
+        flex: 1; padding: 5px 10px; display: flex; align-items: center;
+        color: var(--muted); font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -217,43 +232,46 @@
     <span class="tag">Spaces + Sessions</span>
   </header>
   <main>
+    <!-- Chat Panel -->
     <section class="panel">
       <div class="messages" id="messages"></div>
       <form id="chat-form">
         <textarea id="message" placeholder="Ask anything..." required></textarea>
         <div style="display:flex; flex-direction:column; gap:10px;">
-          <button type="submit">Send</button>
+          <button type="submit" id="send-btn">Send</button>
           <button type="button" class="secondary" id="reset-btn">Reset</button>
         </div>
       </form>
     </section>
+
+    <!-- Settings Panel -->
     <section class="panel">
       <div class="field">
         <label for="customer-id">Customer / Session ID</label>
         <input id="customer-id" placeholder="e.g. test-user" />
       </div>
-      <div class="row">
-        <div class="field">
+      
+      <!-- Agent Selection -->
+      <div class="field">
           <label>Agent</label>
-          <div style="display:flex; gap:10px;">
-             <div id="selected-agent-display" style="flex:1; padding:10px; background:#0b1222; border:1px solid var(--border); border-radius:10px; color:var(--muted); display:flex; align-items:center;">
-               None selected
-             </div>
+          <div class="agent-selection">
+             <div id="selected-agent-display">None selected</div>
              <input type="hidden" id="agent-id-input" />
-             <button type="button" id="open-agent-modal" class="secondary" style="white-space:nowrap;">Select Agent</button>
+             <button type="button" id="open-agent-modal" class="secondary" style="white-space:nowrap; border:none; border-left:1px solid var(--border); border-radius:0 10px 10px 0;">Select Agent</button>
           </div>
-        </div>
       </div>
 
-      <dialog id="agent-modal" style="background: #111827; color: white; border: 1px solid #38bdf8; border-radius: 14px; padding: 0; max-width: 400px; width: 90%;">
-        <div style="padding: 20px;">
+      <!-- Agent Modal -->
+      <dialog id="agent-modal">
+        <div class="modal-content">
           <h3 style="margin-top:0">Select an Agent</h3>
-          <div id="agent-list-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; margin: 15px 0;">
+          <div id="agent-list-container" class="modal-list">
             <!-- List populated by JS -->
           </div>
           <button id="close-agent-modal" class="secondary" style="width: 100%;">Cancel</button>
         </div>
       </dialog>
+
       <div class="row">
         <div class="field">
           <label for="account-name">Account Name</label>
@@ -264,6 +282,7 @@
           <input id="collection-uuid" placeholder="optional collection uuid" />
         </div>
       </div>
+      
       <div class="row">
         <div class="field">
           <label for="mode">Mode</label>
@@ -287,337 +306,338 @@
           </select>
         </div>
       </div>
+      
       <div class="field">
         <label for="language">Language</label>
         <input id="language" value="en-US" />
       </div>
+      
       <div class="actions">
         <label class="toggle">
           <input type="checkbox" id="parse-actions" />
-          Parse actions (JSON) from model
+          Parse actions
         </label>
         <label class="toggle">
           <input type="checkbox" id="answer-only" checked />
           Answer only
         </label>
       </div>
-      <div class="label-row">
+      
+      <hr style="border: 0; border-top: 1px solid var(--border); width: 100%; margin: 12px 0;" />
+
+      <div class="actions">
         <div class="pill" id="session-pill">Session: none</div>
         <div class="badge" id="state-pill">State: bot</div>
-        <button type="button" class="secondary" id="release-btn">Release to bot</button>
+        <button type="button" class="secondary" id="release-btn" style="font-size:12px; padding:6px 10px;">Release to bot</button>
       </div>
+      
       <div class="logs" id="logs"></div>
-      <hr style="border: 1px solid var(--border); margin: 16px 0;" />
+      
+      <hr style="border: 0; border-top: 1px solid var(--border); width: 100%; margin: 12px 0;" />
+      
       <div class="row">
         <div class="field">
-          <label for="thread-id">Thread (frontend_context_uuid)</label>
-          <input id="thread-id" placeholder="auto when selecting a thread" />
+          <label for="thread-id">Thread ID</label>
+          <input id="thread-id" placeholder="Frontend context UUID" />
         </div>
         <div class="field">
-          <label for="backend-id">Backend UUID (advanced)</label>
-          <input id="backend-id" placeholder="leave blank for new thread" />
+          <label for="backend-id">Backend UUID</label>
+          <input id="backend-id" placeholder="Optional" />
         </div>
       </div>
+      
       <div class="actions">
         <button type="button" class="secondary" id="apply-thread">Set thread</button>
-        <button type="button" id="new-thread">New thread id</button>
+        <button type="button" id="new-thread">New thread</button>
         <button type="button" class="secondary" id="load-threads">Refresh threads</button>
       </div>
+      
       <div class="thread-list" id="threads"></div>
     </section>
   </main>
+
   <script>
-    const messages = document.getElementById("messages");
-    const form = document.getElementById("chat-form");
-    const textarea = document.getElementById("message");
-    const resetBtn = document.getElementById("reset-btn");
-    const sessionPill = document.getElementById("session-pill");
-    const logs = document.getElementById("logs");
-
-    const customerInput = document.getElementById("customer-id");
-    const accountInput = document.getElementById("account-name");
-    const collectionInput = document.getElementById("collection-uuid");
-    const modeInput = document.getElementById("mode");
-    const sourcesInput = document.getElementById("sources");
-    const languageInput = document.getElementById("language");
-    const parseActionsInput = document.getElementById("parse-actions");
-    const answerOnlyInput = document.getElementById("answer-only");
-    const statePill = document.getElementById("state-pill");
-    const releaseBtn = document.getElementById("release-btn");
-    const threadIdInput = document.getElementById("thread-id");
-    const backendIdInput = document.getElementById("backend-id");
-    const applyThreadBtn = document.getElementById("apply-thread");
-    const newThreadBtn = document.getElementById("new-thread");
-    const loadThreadsBtn = document.getElementById("load-threads");
-    const threadsContainer = document.getElementById("threads");
-    const openModalBtn = document.getElementById("open-agent-modal");
-    const closeModalBtn = document.getElementById("close-agent-modal");
-    const agentModal = document.getElementById("agent-modal");
-    const agentListContainer = document.getElementById("agent-list-container");
-    const selectedDisplay = document.getElementById("selected-agent-display");
-    const agentIdInput = document.getElementById("agent-id-input");
-
-    // Modal Logic
-    openModalBtn.onclick = async () => {
-       agentModal.showModal();
-       agentListContainer.innerHTML = '<div class="muted">Loading...</div>';
-       try {
-         const res = await fetch("/api/agents");
-         const data = await res.json();
-         const list = data.agents || (Array.isArray(data) ? data : []);
-         
-         agentListContainer.innerHTML = "";
-         if (list.length === 0) {
-            agentListContainer.innerHTML = '<div class="muted">No agents found</div>';
-            return;
-         }
-         
-         list.forEach(agent => {
-            const btn = document.createElement("button");
-            btn.className = "secondary";
-            btn.style.textAlign = "left";
-            btn.style.padding = "10px";
-            btn.style.border = "1px solid var(--border)";
-            // Fallback for property names if they differ
-            const name = agent.name || agent.agent_name || "(Unnamed)";
-            const account = agent.accountName || agent.account_name || "Unknown Account";
-            const id = agent.id || agent.agent_id;
-            
-            btn.innerHTML = `<div><strong>${name}</strong></div><div style="font-size:11px; opacity:0.7">${account}</div>`;
-            btn.onclick = () => {
-               agentIdInput.value = id;
-               selectedDisplay.textContent = name;
-               selectedDisplay.style.color = "var(--text)";
-               // Update other fields if present in agent data
-               if (agent.accountName) accountInput.value = agent.accountName;
-               if (agent.collectionUuid) collectionInput.value = agent.collectionUuid;
-               if (agent.mode) modeInput.value = agent.mode;
-               
-               agentModal.close();
-            };
-            agentListContainer.appendChild(btn);
-         });
-       } catch (err) {
-         agentListContainer.innerHTML = `<div style="color:red">Error: ${err.message}</div>`;
-       }
-    };
-    
-    closeModalBtn.onclick = () => agentModal.close();
-
-    const savedId = localStorage.getItem("customerId") || `local-${Math.random().toString(16).slice(2,8)}`;
-    customerInput.value = savedId;
-    let sessionState = null;
-
-    function appendBubble(text, role) {
-      const div = document.createElement("div");
-      div.className = `bubble ${role}`;
-      div.textContent = text;
-      messages.appendChild(div);
-      messages.scrollTop = messages.scrollHeight;
-    }
-
-    function log(obj) {
-      logs.textContent = JSON.stringify(obj, null, 2);
-    }
-
-    function setStatePill(state) {
-      const map = {
-        bot: { text: "State: bot", cls: "badge" },
-        human_handoff: { text: "State: human_handoff", cls: "badge warning" },
-        ticket_open: { text: "State: ticket_open", cls: "badge danger" },
-      };
-      const cfg = map[state] || map.bot;
-      statePill.className = cfg.cls;
-      statePill.textContent = cfg.text;
-    }
-
-    function setSession(session) {
-      sessionState = session;
-      if (!session) return;
-      sessionPill.textContent = `Session: ${session.customerId}`;
-      if (session.frontendContextUuid) threadIdInput.value = session.frontendContextUuid;
-      if (session.backendUuid) backendIdInput.value = session.backendUuid;
-      if (session.state) setStatePill(session.state);
-    }
-
-    function renderThreads(list) {
-      threadsContainer.innerHTML = "";
-      if (!Array.isArray(list) || list.length === 0) {
-        threadsContainer.innerHTML = "<small style='color: var(--muted);'>No threads</small>";
-        return;
-      }
-      list.forEach((t) => {
-        const card = document.createElement("div");
-        card.className = "thread-card";
-        const title = document.createElement("h4");
-        title.textContent = t.title || t.slug || "Untitled";
-        const slug = document.createElement("small");
-        slug.textContent = t.slug || "";
-        const id = document.createElement("small");
-        id.textContent = t.frontend_context_uuid || t.id || "";
-        const btn = document.createElement("button");
-        btn.className = "secondary";
-        btn.textContent = "Use thread";
-        btn.onclick = async () => {
-          const threadId = t.frontend_context_uuid || t.id || t.slug;
-          if (threadId) {
-            threadIdInput.value = threadId;
-            backendIdInput.value = "";
-            await applyThread();
-          }
+    // Wait for DOM to be ready to avoid null reference errors
+    window.addEventListener('DOMContentLoaded', () => {
+        // Element References
+        const els = {
+            messages: document.getElementById("messages"),
+            form: document.getElementById("chat-form"),
+            textarea: document.getElementById("message"),
+            resetBtn: document.getElementById("reset-btn"),
+            sessionPill: document.getElementById("session-pill"),
+            logs: document.getElementById("logs"),
+            customerId: document.getElementById("customer-id"),
+            accountName: document.getElementById("account-name"),
+            collectionUuid: document.getElementById("collection-uuid"),
+            mode: document.getElementById("mode"),
+            sources: document.getElementById("sources"),
+            language: document.getElementById("language"),
+            parseActions: document.getElementById("parse-actions"),
+            answerOnly: document.getElementById("answer-only"),
+            statePill: document.getElementById("state-pill"),
+            releaseBtn: document.getElementById("release-btn"),
+            threadId: document.getElementById("thread-id"),
+            backendId: document.getElementById("backend-id"),
+            applyThreadBtn: document.getElementById("apply-thread"),
+            newThreadBtn: document.getElementById("new-thread"),
+            loadThreadsBtn: document.getElementById("load-threads"),
+            threadsContainer: document.getElementById("threads"),
+            openModalBtn: document.getElementById("open-agent-modal"),
+            closeModalBtn: document.getElementById("close-agent-modal"),
+            agentModal: document.getElementById("agent-modal"),
+            agentListContainer: document.getElementById("agent-list-container"),
+            selectedAgentDisplay: document.getElementById("selected-agent-display"),
+            agentIdInput: document.getElementById("agent-id-input")
         };
-        card.appendChild(title);
-        if (slug.textContent) card.appendChild(slug);
-        if (id.textContent) card.appendChild(id);
-        card.appendChild(btn);
-        threadsContainer.appendChild(card);
-      });
-    }
 
-    async function sendMessage(resetSession = false) {
-      const customerId = customerInput.value.trim() || `local-${Math.random().toString(16).slice(2,8)}`;
-      localStorage.setItem("customerId", customerId);
-      sessionPill.textContent = `Session: ${customerId}`;
+        // Initialize State
+        const savedId = localStorage.getItem("customerId") || `local-${Math.random().toString(16).slice(2,8)}`;
+        els.customerId.value = savedId;
+        let sessionState = null;
 
-      const payload = {
-        customerId,
-        message: textarea.value,
-        accountName: accountInput.value || undefined,
-        collectionUuid: collectionInput.value || undefined,
-        frontendContextUuid: threadIdInput.value || undefined,
-        backendUuid: backendIdInput.value || undefined,
-        mode: modeInput.value,
-        sources: sourcesInput.value,
-        language: languageInput.value,
-        resetSession,
-        parseActions: parseActionsInput.checked,
-        answerOnly: answerOnlyInput.checked,
-        agentId: agentIdInput.value || undefined,
-      };
-
-      appendBubble(textarea.value, "user");
-      textarea.value = "";
-
-      const res = await fetch("/api/message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (data.error) {
-        appendBubble(`Error: ${data.error}`, "bot");
-      } else {
-        appendBubble(data.reply, "bot");
-      }
-      if (data.session) setSession(data.session);
-      if (data.session?.state) {
-        setStatePill(data.session.state);
-      }
-      if (data.action) {
-        appendBubble(
-          `[action ${data.action.status}] ${data.action.action ? JSON.stringify(data.action.action) : ""}`,
-          "bot",
-        );
-      }
-      log(data);
-    }
-
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (!textarea.value.trim()) return;
-      sendMessage(false).catch((err) => {
-        appendBubble("Request failed", "bot");
-        log({ error: err.message });
-      });
-    });
-
-    resetBtn.addEventListener("click", () => {
-      sendMessage(true).catch((err) => {
-        appendBubble("Reset failed", "bot");
-        log({ error: err.message });
-      });
-    });
-
-    async function applyThread() {
-      const customerId = customerInput.value.trim();
-      if (!customerId) {
-        appendBubble("Set a customer/session id first", "bot");
-        return;
-      }
-      const body = {
-        frontendContextUuid: threadIdInput.value || null,
-        backendUuid: backendIdInput.value || null,
-      };
-      const res = await fetch(`/api/session/${encodeURIComponent(customerId)}/thread`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (data.session) setSession(data.session);
-      log(data);
-    }
-
-    applyThreadBtn.addEventListener("click", () => {
-      applyThread().catch((err) => {
-        appendBubble("Thread update failed", "bot");
-        log({ error: err.message });
-      });
-    });
-
-    newThreadBtn.addEventListener("click", () => {
-      const id = crypto.randomUUID ? crypto.randomUUID() : `thread-${Date.now()}`;
-      threadIdInput.value = id;
-      backendIdInput.value = "";
-      applyThread().catch((err) => {
-        appendBubble("Thread update failed", "bot");
-        log({ error: err.message });
-      });
-    });
-
-    async function fetchThreads() {
-      const accountName = accountInput.value.trim();
-      if (!accountName) {
-        appendBubble("Set account name to load threads", "bot");
-        return;
-      }
-      try {
-        const res = await fetch(`/api/threads?accountName=${encodeURIComponent(accountName)}`);
-        const data = await res.json();
-        if (data.threads) {
-          renderThreads(data.threads);
+        // --- Helpers ---
+        function log(obj) {
+            els.logs.textContent = JSON.stringify(obj, null, 2);
         }
-        log(data);
-      } catch (err) {
-        appendBubble("Thread fetch failed", "bot");
-        log({ error: err.message });
-      }
-    }
 
-    loadThreadsBtn.addEventListener("click", () => {
-      fetchThreads();
-    });
+        function appendBubble(text, role) {
+            const div = document.createElement("div");
+            div.className = `bubble ${role}`;
+            div.textContent = text;
+            els.messages.appendChild(div);
+            els.messages.scrollTop = els.messages.scrollHeight;
+        }
 
-    // Replaced with Modal Logic above
+        function setStatePill(state) {
+            const map = {
+                bot: { text: "State: bot", cls: "badge" },
+                human_handoff: { text: "State: human_handoff", cls: "badge warning" },
+                ticket_open: { text: "State: ticket_open", cls: "badge danger" },
+            };
+            const cfg = map[state] || map.bot;
+            els.statePill.className = cfg.cls;
+            els.statePill.textContent = cfg.text;
+        }
 
-    releaseBtn.addEventListener("click", async () => {
-      const customerId = customerInput.value.trim();
-      if (!customerId) return;
-      try {
-        const res = await fetch(`/api/session/${encodeURIComponent(customerId)}/state`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ state: "bot" }),
+        function setSession(session) {
+            sessionState = session;
+            if (!session) return;
+            els.sessionPill.textContent = `Session: ${session.customerId}`;
+            if (session.frontendContextUuid) els.threadId.value = session.frontendContextUuid;
+            if (session.backendUuid) els.backendId.value = session.backendUuid;
+            if (session.state) setStatePill(session.state);
+        }
+
+        // --- Agent Modal Logic ---
+        els.openModalBtn.onclick = async () => {
+            if (!els.agentModal.showModal) {
+                alert("Your browser does not support the <dialog> API.");
+                return;
+            }
+            els.agentModal.showModal();
+            els.agentListContainer.innerHTML = '<div style="color: var(--muted); padding: 10px;">Loading agents...</div>';
+            
+            try {
+                const res = await fetch("/api/agents");
+                const data = await res.json();
+                const list = data.agents || (Array.isArray(data) ? data : []);
+
+                els.agentListContainer.innerHTML = "";
+                
+                if (list.length === 0) {
+                    els.agentListContainer.innerHTML = '<div style="color: var(--muted); padding: 10px;">No agents found. Create one in the Agents tab.</div>';
+                    return;
+                }
+
+                list.forEach(agent => {
+                    const btn = document.createElement("div");
+                    btn.className = "agent-btn";
+                    const name = agent.name || agent.agent_name || "(Unnamed)";
+                    const account = agent.accountName || agent.account_name || "Unknown Account";
+                    
+                    btn.innerHTML = `<strong>${name}</strong><small>${account}</small>`;
+                    btn.onclick = () => {
+                        els.agentIdInput.value = agent.id || agent.agent_id;
+                        els.selectedAgentDisplay.textContent = name;
+                        els.selectedAgentDisplay.style.color = "var(--text)";
+                        
+                        // Auto-fill fields
+                        if (agent.accountName) els.accountName.value = agent.accountName;
+                        if (agent.collectionUuid) els.collectionUuid.value = agent.collectionUuid;
+                        if (agent.mode) els.mode.value = agent.mode;
+                        
+                        els.agentModal.close();
+                    };
+                    els.agentListContainer.appendChild(btn);
+                });
+            } catch (err) {
+                els.agentListContainer.innerHTML = `<div style="color: var(--danger); padding: 10px;">Error loading agents: ${err.message}</div>`;
+                console.error(err);
+            }
+        };
+
+        els.closeModalBtn.onclick = () => els.agentModal.close();
+
+        // --- Chat Logic ---
+        async function sendMessage(resetSession = false) {
+            const customerId = els.customerId.value.trim();
+            if (!customerId) {
+                alert("Please enter a Customer ID");
+                return;
+            }
+            localStorage.setItem("customerId", customerId);
+            els.sessionPill.textContent = `Session: ${customerId}`;
+
+            const payload = {
+                customerId,
+                message: els.textarea.value,
+                accountName: els.accountName.value || undefined,
+                collectionUuid: els.collectionUuid.value || undefined,
+                frontendContextUuid: els.threadId.value || undefined,
+                backendUuid: els.backendId.value || undefined,
+                mode: els.mode.value,
+                sources: els.sources.value,
+                language: els.language.value,
+                resetSession,
+                parseActions: els.parseActions.checked,
+                answerOnly: els.answerOnly.checked,
+                agentId: els.agentIdInput.value || undefined,
+            };
+
+            appendBubble(els.textarea.value, "user");
+            els.textarea.value = "";
+
+            try {
+                const res = await fetch("/api/message", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await res.json();
+                
+                if (data.error) {
+                    appendBubble(`Error: ${data.error}`, "bot");
+                } else {
+                    appendBubble(data.reply, "bot");
+                }
+                
+                if (data.session) setSession(data.session);
+                if (data.action) {
+                    appendBubble(`[action ${data.action.status}] ${JSON.stringify(data.action.action)}`, "bot");
+                }
+                log(data);
+            } catch (err) {
+                appendBubble("Network or Server Error", "bot");
+                log({ error: err.message });
+            }
+        }
+
+        els.form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            if (!els.textarea.value.trim()) return;
+            sendMessage(false);
         });
-        const data = await res.json();
-        if (data.session) setSession(data.session);
-        log(data);
-        appendBubble("State released to bot", "bot");
-      } catch (err) {
-        appendBubble("State release failed", "bot");
-        log({ error: err.message });
-      }
+
+        els.resetBtn.addEventListener("click", () => {
+            sendMessage(true);
+        });
+
+        // --- Thread Management ---
+        async function applyThread() {
+            const customerId = els.customerId.value.trim();
+            if (!customerId) return;
+            
+            try {
+                const body = {
+                    frontendContextUuid: els.threadId.value || null,
+                    backendUuid: els.backendId.value || null,
+                };
+                const res = await fetch(`/api/session/${encodeURIComponent(customerId)}/thread`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body),
+                });
+                const data = await res.json();
+                if (data.session) setSession(data.session);
+                log(data);
+            } catch (err) {
+                log({ error: err.message });
+            }
+        }
+
+        els.applyThreadBtn.onclick = applyThread;
+        
+        els.newThreadBtn.onclick = () => {
+            els.threadId.value = crypto.randomUUID ? crypto.randomUUID() : `thread-${Date.now()}`;
+            els.backendId.value = "";
+            applyThread();
+        };
+
+        els.loadThreadsBtn.onclick = async () => {
+            const accountName = els.accountName.value.trim();
+            if (!accountName) {
+                alert("Enter Account Name first");
+                return;
+            }
+            try {
+                const res = await fetch(`/api/threads?accountName=${encodeURIComponent(accountName)}`);
+                const data = await res.json();
+                const list = data.threads;
+                
+                els.threadsContainer.innerHTML = "";
+                if (!Array.isArray(list) || list.length === 0) {
+                    els.threadsContainer.innerHTML = "<small style='color: var(--muted);'>No threads found.</small>";
+                    return;
+                }
+                
+                list.forEach((t) => {
+                    const card = document.createElement("div");
+                    card.className = "thread-card";
+                    card.innerHTML = `
+                        <h4>${t.title || t.slug || "Untitled"}</h4>
+                        <small>${t.frontend_context_uuid || t.id}</small>
+                    `;
+                    const btn = document.createElement("button");
+                    btn.className = "secondary";
+                    btn.style.marginTop = "6px";
+                    btn.style.fontSize = "11px";
+                    btn.textContent = "Load";
+                    btn.onclick = () => {
+                        const threadId = t.frontend_context_uuid || t.id || t.slug;
+                        if (threadId) {
+                            els.threadId.value = threadId;
+                            els.backendId.value = "";
+                            applyThread();
+                        }
+                    };
+                    card.appendChild(btn);
+                    els.threadsContainer.appendChild(card);
+                });
+                log(data);
+            } catch (err) {
+                log({ error: err.message });
+            }
+        };
+
+        els.releaseBtn.onclick = async () => {
+            const customerId = els.customerId.value.trim();
+            if (!customerId) return;
+            try {
+                const res = await fetch(`/api/session/${encodeURIComponent(customerId)}/state`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ state: "bot" }),
+                });
+                const data = await res.json();
+                if (data.session) setSession(data.session);
+                log(data);
+                appendBubble("Session state reset to 'bot'", "bot");
+            } catch (err) {
+                log({ error: err.message });
+            }
+        };
     });
   </script>
 </body>
