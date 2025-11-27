@@ -106,9 +106,13 @@ async function createAgentStore(): Promise<IAgentStore> {
         await ensureTables();
       return new PostgresAgentStore(pool);
     } catch (err) {
-      console.error("Agent store init failed; falling back to memory", err);
+      console.error("FATAL: Agent store init failed (Postgres configured but failed to connect/init)", err);
+      // We throw to prevent silent fallback to memory in production, which causes data loss.
+      // Check POSTGRES_URL and connectivity.
+      throw err;
     }
   }
+  console.warn("WARN: POSTGRES_URL not set. Using In-Memory Agent Store. DATA WILL BE LOST on restart.");
   return new MemoryAgentStore();
 }
 

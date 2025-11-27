@@ -216,9 +216,11 @@ async function createSessionStore(): Promise<ISessionStore> {
       await ensureTables();
       return new PostgresSessionStore(pool, config.defaultAccount, config.defaultCollectionUuid);
     } catch (err) {
-      console.error("Postgres init failed; falling back to in-memory store", err);
+      console.error("FATAL: Session store init failed (Postgres configured but failed to connect/init)", err);
+      throw err;
     }
   }
+  console.warn("WARN: POSTGRES_URL not set. Using In-Memory Session Store. DATA WILL BE LOST on restart.");
   return new InMemorySessionStore(config.defaultAccount, config.defaultCollectionUuid);
 }
 
