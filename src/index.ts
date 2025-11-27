@@ -419,6 +419,24 @@ async function buildServer() {
     return { result };
   });
 
+  fastify.get("/api/messages/:threadUuid", async (request, reply) => {
+    const threadUuid = (request.params as { threadUuid: string }).threadUuid;
+    const pool = getPool();
+    if (!pool) {
+      return { messages: [] }; // Fallback if no DB
+    }
+    try {
+      const res = await pool.query(
+        "SELECT role, content, created_at FROM messages WHERE thread_uuid = $1 ORDER BY created_at ASC",
+        [threadUuid]
+      );
+      return { messages: res.rows };
+    } catch (err) {
+      reply.code(500);
+      return { error: "Failed to fetch messages", detail: (err as Error).message };
+    }
+  });
+
   fastify.get("/api/feedback", async (request, reply) => {
     const pool = getPool();
     if (!pool) {
@@ -541,7 +559,7 @@ async function handleSyncQuery(
     return { error: "session is handed off; reset to resume bot" };
   }
 
-  await safeLogMessage(body.customerId, "user", body.message);
+  await safeLogMessage(body.customerId, "user", body.message, session.frontendContextUuid || undefined);
 
   request.log.info(
     {
@@ -595,7 +613,12 @@ async function handleSyncQuery(
       "processed action output",
     );
     if (actionResult.action) {
-      await safeLogMessage(body.customerId, "action", JSON.stringify(actionResult.action));
+      await safeLogMessage(
+        body.customerId,
+        "action",
+        JSON.stringify(actionResult.action),
+        session.frontendContextUuid || undefined,
+      );
     }
   }
 
@@ -620,7 +643,12 @@ async function handleSyncQuery(
   );
 
   if (answer) {
-    await safeLogMessage(body.customerId, "assistant", answer);
+    await safeLogMessage(
+      body.customerId,
+      "assistant",
+      answer,
+      (response as QueryResponsePayload).frontend_context_uuid as string | undefined,
+    );
   }
 
   // Save to tester history if applicable
@@ -660,7 +688,7 @@ async function handleAsyncQuery(
 
   const query = body.parseActions ? buildActionPrompt(body.message) : body.message;
 
-  await safeLogMessage(body.customerId, "user", body.message);
+  await safeLogMessage(body.customerId, "user", body.message, session.frontendContextUuid || undefined);
 
   request.log.info(
     {
@@ -762,7 +790,12 @@ async function handleAsyncQuery(
         "perplexity async response complete",
       );
       if (collected) {
-        await safeLogMessage(body.customerId, "assistant", collected);
+        await safeLogMessage(
+          body.customerId,
+          "assistant",
+          collected,
+          frontendContextUuid || undefined,
+        );
       }
       
       if (frontendContextUuid) {
@@ -851,9 +884,14 @@ function ensureRateLimit(customerId: string, reply: any, request: any) {
   return false;
 }
 
-async function safeLogMessage(customerId: string, role: MessageRole, content: string) {
+async function safeLogMessage(
+  customerId: string,
+  role: MessageRole,
+  content: string,
+  threadUuid?: string,
+) {
   try {
-    await logMessage({ customerId, role, content });
+    await logMessage({ customerId, role, content, threadUuid });
   } catch (err) {
     console.warn("failed to log message", err);
   }

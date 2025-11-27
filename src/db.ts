@@ -44,10 +44,13 @@ export async function ensureTables() {
       customer_id TEXT NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
       role TEXT NOT NULL,
       content TEXT NOT NULL,
+      thread_uuid TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS thread_uuid TEXT;
 
     CREATE INDEX IF NOT EXISTS idx_messages_customer_id_created_at ON messages(customer_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_messages_thread_uuid ON messages(thread_uuid);
 
     CREATE TABLE IF NOT EXISTS actions (
       id BIGSERIAL PRIMARY KEY,

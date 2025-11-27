@@ -329,8 +329,17 @@
 
       await loadThreads();
       
-      // Check if we have a saved active thread for this agent/tester combo?
-      // Simpler: Just start new or let user pick.
+      // Auto-load last thread
+      const lastThread = localStorage.getItem('last_thread_uuid_' + config.agentId);
+      if (lastThread) {
+          // Verify it still exists in the list (user might have cleared it on backend, though unlikely)
+          // or just try to load it.
+          if (threads.find(t => t.thread_uuid === lastThread)) {
+              switchThread(lastThread);
+          } else {
+              localStorage.removeItem('last_thread_uuid_' + config.agentId);
+          }
+      }
     }
     
     // --- UI Logic ---
@@ -403,6 +412,29 @@
         }
     };
 
+    async function loadMessages(threadUuid) {
+        if (!threadUuid) return;
+        try {
+            const res = await fetch(`/api/messages/${threadUuid}`);
+            const data = await res.json();
+            if (data.messages) {
+                els.chatBox.innerHTML = ''; // Clear current view
+                if (data.messages.length === 0) {
+                    els.chatBox.innerHTML = '<div style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px;">Start chatting...</div>';
+                } else {
+                    data.messages.forEach(m => {
+                        // Map roles to UI classes
+                        const role = m.role === 'user' ? 'user' : 'bot';
+                        if (m.role === 'system') return; // Skip system prompts
+                        appendBubble(m.content, role);
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load messages', err);
+        }
+    }
+
     async function switchThread(uuid) {
         if (currentThreadUuid === uuid) {
             toggleDrawer(false);
@@ -410,7 +442,10 @@
         }
         currentThreadUuid = uuid;
         toggleDrawer(false);
-        els.chatBox.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted)">Switched to thread.<br>History not locally cached (yet).</div>';
+        els.chatBox.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted)">Loading history...</div>';
+        
+        // Load messages
+        await loadMessages(uuid);
         
         // Restore session on backend
         await fetch(`/api/session/${testerId}/thread`, {
@@ -418,10 +453,16 @@
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ frontendContextUuid: uuid })
         });
+        
+        // Persist current thread
+        localStorage.setItem('last_thread_uuid_' + config.agentId, uuid);
+        renderThreads(); // Update highlight
     }
 
     els.newChat.onclick = async () => {
         currentThreadUuid = null; // Will generate new on first message
+        localStorage.removeItem('last_thread_uuid_' + config.agentId);
+        
         // Reset backend session thread
         await fetch(`/api/session/${testerId}/thread`, {
             method: 'POST',
@@ -430,6 +471,7 @@
         });
         els.chatBox.innerHTML = '<div style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px;">New Chat Started</div>';
         toggleDrawer(false);
+        renderThreads();
     };
 
     // --- Messaging ---
