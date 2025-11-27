@@ -413,7 +413,87 @@ async function buildServer() {
     return { result };
   });
 
+  fastify.get("/api/feedback", async (request, reply) => {
+    const pool = getPool();
+    if (!pool) {
+      reply.code(500);
+      return { error: "Database not configured" };
+    }
+    try {
+      const res = await pool.query("SELECT * FROM thread_comments ORDER BY created_at DESC LIMIT 100");
+      return { feedback: res.rows };
+    } catch (err) {
+      reply.code(500);
+      return { error: "Failed to fetch feedback", detail: (err as Error).message };
+    }
+  });
+
+  fastify.post("/api/feedback", async (request, reply) => {
+    const body = request.body as { testerId?: string; threadUuid?: string; content?: string };
+    if (!body.testerId || !body.threadUuid || !body.content) {
+      reply.code(400);
+      return { error: "testerId, threadUuid, and content are required" };
+    }
+    const pool = getPool();
+    if (!pool) {
+      reply.code(500);
+      return { error: "Database not configured" };
+    }
+    try {
+      await pool.query(
+        "INSERT INTO thread_comments (tester_id, thread_uuid, content) VALUES ($1, $2, $3)",
+        [body.testerId, body.threadUuid, body.content]
+      );
+      return { status: "ok" };
+    } catch (err) {
+      reply.code(500);
+      return { error: "Failed to save feedback", detail: (err as Error).message };
+    }
+  });
+
+  fastify.get("/api/tester/threads", async (request, reply) => {
+    const testerId = (request.query as { testerId?: string }).testerId;
+    if (!testerId) {
+      reply.code(400);
+      return { error: "testerId is required" };
+    }
+    const pool = getPool();
+    if (!pool) {
+      return { threads: [] }; // Fallback if no DB
+    }
+    try {
+      const res = await pool.query(
+        "SELECT * FROM tester_threads WHERE tester_id = $1 ORDER BY updated_at DESC",
+        [testerId]
+      );
+      return { threads: res.rows };
+    } catch (err) {
+      reply.code(500);
+      return { error: "Failed to list threads", detail: (err as Error).message };
+    }
+  });
+
   return fastify;
+}
+
+async function saveTesterThread(
+  pool: any,
+  testerId: string,
+  threadUuid: string,
+  title?: string
+) {
+  if (!pool || !testerId || !threadUuid) return;
+  try {
+    await pool.query(
+      `INSERT INTO tester_threads (tester_id, thread_uuid, title, updated_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (tester_id, thread_uuid)
+       DO UPDATE SET updated_at = NOW(), title = COALESCE(EXCLUDED.title, tester_threads.title)`,
+      [testerId, threadUuid, title || "New Thread"]
+    );
+  } catch (err) {
+    console.warn("Failed to save tester thread", err);
+  }
 }
 
 async function handleSyncQuery(
@@ -495,6 +575,15 @@ async function handleSyncQuery(
     (response as QueryResponsePayload).backend_uuid as string | undefined,
     (response as QueryResponsePayload).frontend_context_uuid as string | undefined,
   );
+
+  if ((response as QueryResponsePayload).frontend_context_uuid) {
+    await saveTesterThread(
+      getPool(),
+      body.customerId,
+      (response as QueryResponsePayload).frontend_context_uuid as string,
+      body.message.slice(0, 50)
+    );
+  }
 
   request.log.info(
     {
@@ -641,6 +730,15 @@ async function handleAsyncQuery(
       );
       if (collected) {
         await safeLogMessage(body.customerId, "assistant", collected);
+      }
+      
+      if (frontendContextUuid) {
+         await saveTesterThread(
+           getPool(),
+           body.customerId,
+           frontendContextUuid,
+           body.message.slice(0, 50)
+         );
       }
     } else {
       request.log.error(

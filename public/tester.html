@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Tester Chat</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --header: #1e293b;
+      --input-bg: #1e293b;
+      --text: #f1f5f9;
+      --accent: #38bdf8;
+      --bubble-user: #0ea5e9;
+      --bubble-bot: #334155;
+      --border: #334155;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* Drawer */
+    .drawer {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
+      background: var(--header); z-index: 20;
+      transform: translateX(-100%); transition: transform 0.3s ease;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+      display: flex; flex-direction: column;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .drawer-content { flex: 1; overflow-y: auto; padding: 10px; }
+    .overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6); z-index: 15;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .overlay.open { opacity: 1; pointer-events: auto; }
+
+    /* Header */
+    header {
+      background: var(--header);
+      padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .menu-btn { font-size: 24px; cursor: pointer; background: none; border: none; color: var(--text); padding: 0; }
+    .agent-info { font-size: 16px; font-weight: 600; text-align: center; flex: 1; }
+    .feedback-btn { color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+
+    /* Chat Area */
+    main { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .bubble {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 15px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      position: relative;
+    }
+    .bubble.user {
+      align-self: flex-end;
+      background: var(--bubble-user);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .bubble.bot {
+      align-self: flex-start;
+      background: var(--bubble-bot);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+    
+    /* Input Area */
+    footer {
+      background: var(--header);
+      padding: 10px;
+      display: flex; gap: 10px;
+      border-top: 1px solid var(--border);
+    }
+    textarea {
+      flex: 1;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 10px 14px;
+      color: var(--text);
+      resize: none;
+      height: 44px;
+      font-family: inherit;
+      font-size: 15px;
+    }
+    textarea:focus { outline: none; border-color: var(--accent); }
+    .send-btn {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      border-radius: 50%;
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    /* Thread List Items */
+    .thread-item {
+      padding: 12px; border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .thread-item:active { background: rgba(255,255,255,0.05); }
+    .thread-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .thread-date { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .new-chat-btn {
+      width: 100%; padding: 12px; margin-bottom: 10px;
+      background: var(--accent); color: #0f172a;
+      border: none; border-radius: 8px; font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Feedback Modal */
+    dialog {
+      background: var(--header); color: var(--text);
+      border: 1px solid var(--border); border-radius: 12px;
+      width: 90%; max-width: 320px;
+    }
+    dialog::backdrop { background: rgba(0,0,0,0.7); }
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+    .btn { padding: 8px; border-radius: 6px; border: none; flex: 1; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: var(--accent); color: #0f172a; }
+    .btn-secondary { background: var(--border); color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="overlay" id="overlay"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <span>My Threads</span>
+      <button class="menu-btn" id="close-drawer">&times;</button>
+    </div>
+    <div class="drawer-content">
+      <button class="new-chat-btn" id="new-chat">New Chat +</button>
+      <div id="thread-list"></div>
+    </div>
+  </div>
+
+  <!-- Main View -->
+  <header>
+    <button class="menu-btn" id="open-drawer">&#9776;</button>
+    <div class="agent-info" id="agent-name">Agent</div>
+    <button class="feedback-btn" id="feedback-btn">Feedback</button>
+  </header>
+
+  <main id="chat-box">
+    <div style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px;">
+      Start chatting to test this agent.
+    </div>
+  </main>
+
+  <footer id="input-area">
+    <textarea id="message-input" placeholder="Type a message..."></textarea>
+    <button class="send-btn" id="send-btn">></button>
+  </footer>
+
+  <!-- Feedback Modal -->
+  <dialog id="feedback-modal">
+    <div class="modal-body">
+      <h3>Thread Feedback</h3>
+      <p style="font-size: 13px; color: var(--muted);">Leave a comment about this conversation for the admin.</p>
+      <textarea id="feedback-text" style="height: 100px; width: 100%;" placeholder="E.g. Great answer, but missed the context..."></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancel-feedback">Cancel</button>
+        <button class="btn btn-primary" id="submit-feedback">Submit</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    // --- State & Config ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const config = {
+      agentId: urlParams.get('agentId'),
+      mode: urlParams.get('mode') || 'auto',
+      sources: urlParams.get('sources') || 'web',
+      model: urlParams.get('model') || '',
+    };
+
+    // Generate or retrieve Tester ID
+    let testerId = localStorage.getItem('tester_id');
+    if (!testerId) {
+      testerId = 'tester-' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('tester_id', testerId);
+    }
+
+    let currentThreadUuid = null;
+    let threads = [];
+    
+    // --- Elements ---
+    const els = {
+      drawer: document.getElementById('drawer'),
+      overlay: document.getElementById('overlay'),
+      openDrawer: document.getElementById('open-drawer'),
+      closeDrawer: document.getElementById('close-drawer'),
+      threadList: document.getElementById('thread-list'),
+      newChat: document.getElementById('new-chat'),
+      chatBox: document.getElementById('chat-box'),
+      input: document.getElementById('message-input'),
+      sendBtn: document.getElementById('send-btn'),
+      agentName: document.getElementById('agent-name'),
+      feedbackBtn: document.getElementById('feedback-btn'),
+      feedbackModal: document.getElementById('feedback-modal'),
+      feedbackText: document.getElementById('feedback-text'),
+      cancelFeedback: document.getElementById('cancel-feedback'),
+      submitFeedback: document.getElementById('submit-feedback'),
+    };
+
+    // --- Init ---
+    async function init() {
+      if (!config.agentId) {
+        alert('No Agent ID provided in URL.');
+        return;
+      }
+      // Load Agent Info
+      try {
+        const res = await fetch('/api/agents');
+        const data = await res.json();
+        const agent = (data.agents || []).find(a => a.id === config.agentId);
+        if (agent) {
+          els.agentName.textContent = agent.name;
+        }
+      } catch (e) { console.error(e); }
+
+      await loadThreads();
+      
+      // Check if we have a saved active thread for this agent/tester combo?
+      // Simpler: Just start new or let user pick.
+    }
+    
+    // --- UI Logic ---
+    function toggleDrawer(open) {
+      els.drawer.classList.toggle('open', open);
+      els.overlay.classList.toggle('open', open);
+    }
+    els.openDrawer.onclick = () => toggleDrawer(true);
+    els.closeDrawer.onclick = () => toggleDrawer(false);
+    els.overlay.onclick = () => toggleDrawer(false);
+
+    // --- Threads ---
+    async function loadThreads() {
+      try {
+        const res = await fetch(`/api/tester/threads?testerId=${testerId}`);
+        const data = await res.json();
+        threads = data.threads || [];
+        renderThreads();
+      } catch (err) { console.error('Failed to load threads', err); }
+    }
+
+    function renderThreads() {
+      els.threadList.innerHTML = '';
+      threads.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'thread-item';
+        div.innerHTML = `
+          <div class="thread-title">${t.title || 'Untitled Thread'}</div>
+          <div class="thread-date">${new Date(t.updated_at).toLocaleString()}</div>
+        `;
+        div.onclick = () => switchThread(t.thread_uuid);
+        if (t.thread_uuid === currentThreadUuid) div.style.background = 'rgba(255,255,255,0.1)';
+        els.threadList.appendChild(div);
+      });
+    }
+
+    async function switchThread(uuid) {
+        if (currentThreadUuid === uuid) {
+            toggleDrawer(false);
+            return;
+        }
+        currentThreadUuid = uuid;
+        toggleDrawer(false);
+        els.chatBox.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted)">Switched to thread.<br>History not locally cached (yet).</div>';
+        
+        // Restore session on backend
+        await fetch(`/api/session/${testerId}/thread`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ frontendContextUuid: uuid })
+        });
+    }
+
+    els.newChat.onclick = async () => {
+        currentThreadUuid = null; // Will generate new on first message
+        // Reset backend session thread
+        await fetch(`/api/session/${testerId}/thread`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ frontendContextUuid: null, backendUuid: null })
+        });
+        els.chatBox.innerHTML = '<div style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px;">New Chat Started</div>';
+        toggleDrawer(false);
+    };
+
+    // --- Messaging ---
+    function appendBubble(text, role) {
+        const div = document.createElement('div');
+        div.className = `bubble ${role}`;
+        div.textContent = text;
+        els.chatBox.appendChild(div);
+        els.chatBox.scrollTop = els.chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const text = els.input.value.trim();
+        if (!text) return;
+        
+        appendBubble(text, 'user');
+        els.input.value = '';
+        
+        const payload = {
+            customerId: testerId,
+            message: text,
+            agentId: config.agentId,
+            mode: config.mode,
+            sources: config.sources,
+            frontendContextUuid: currentThreadUuid || undefined
+        };
+        
+        try {
+            const res = await fetch('/api/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            if (data.error) {
+                appendBubble('Error: ' + data.error, 'bot');
+            } else {
+                appendBubble(data.reply, 'bot');
+            }
+            
+            // Update thread ID if new
+            if (data.session && data.session.frontendContextUuid) {
+                if (currentThreadUuid !== data.session.frontendContextUuid) {
+                    currentThreadUuid = data.session.frontendContextUuid;
+                    loadThreads(); // Refresh list to show new thread
+                }
+            }
+        } catch (err) {
+            appendBubble('Network Error', 'bot');
+        }
+    }
+    
+    els.sendBtn.onclick = sendMessage;
+    els.input.onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
+
+    // --- Feedback ---
+    els.feedbackBtn.onclick = () => {
+        if (!currentThreadUuid) {
+            alert("Start a chat first to leave feedback on it.");
+            return;
+        }
+        els.feedbackModal.showModal();
+    };
+    els.cancelFeedback.onclick = () => els.feedbackModal.close();
+    
+    els.submitFeedback.onclick = async () => {
+        const content = els.feedbackText.value.trim();
+        if (!content) return;
+        
+        try {
+            await fetch('/api/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    testerId,
+                    threadUuid: currentThreadUuid,
+                    content
+                })
+            });
+            alert('Feedback sent!');
+            els.feedbackText.value = '';
+            els.feedbackModal.close();
+        } catch (err) {
+            alert('Error sending feedback');
+        }
+    };
+
+    init();
+  </script>
+</body>
+</html>

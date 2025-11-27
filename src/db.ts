@@ -79,5 +79,22 @@ export async function ensureTables() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS tester_threads (
+      tester_id TEXT NOT NULL,
+      thread_uuid TEXT NOT NULL,
+      title TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (tester_id, thread_uuid)
+    );
+
+    CREATE TABLE IF NOT EXISTS thread_comments (
+      id BIGSERIAL PRIMARY KEY,
+      thread_uuid TEXT NOT NULL,
+      tester_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
 }

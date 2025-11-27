@@ -172,8 +172,18 @@
     <div class="list" id="agents"></div>
   </section>
 
+  <section class="panel" style="margin-top:16px;">
+    <h3>Tester Feedback</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <small class="muted">Latest feedback from testers</small>
+        <button class="secondary" id="refresh-feedback" style="padding:4px 8px; font-size:12px;">Refresh</button>
+    </div>
+    <div id="feedback-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
+  </section>
+
   <script>
     const agentAccount = document.getElementById("agent-account");
+
     const agentCollection = document.getElementById("agent-collection");
     const agentMode = document.getElementById("agent-mode");
     const agentSources = document.getElementById("agent-sources");
@@ -284,10 +294,55 @@
             log({ error: err.message });
           }
         };
+        
+        const copyLinkBtn = document.createElement("button");
+        copyLinkBtn.className = "secondary";
+        copyLinkBtn.textContent = "Copy Tester Link";
+        copyLinkBtn.style.marginTop = "6px";
+        copyLinkBtn.onclick = () => {
+            const url = `${window.location.origin}/tester.html?agentId=${a.id}&mode=${a.mode||'auto'}`;
+            navigator.clipboard.writeText(url);
+            alert("Tester link copied!");
+        };
+
         card.appendChild(testBox);
-        card.appendChild(testBtn);
+        const btnRow = document.createElement("div");
+        btnRow.style.display = "flex";
+        btnRow.style.gap = "6px";
+        btnRow.appendChild(testBtn);
+        btnRow.appendChild(copyLinkBtn);
+        card.appendChild(btnRow);
+        
         agentsContainer.appendChild(card);
       });
+    }
+    
+    async function loadFeedback() {
+        const container = document.getElementById("feedback-list");
+        try {
+            const res = await fetch("/api/feedback");
+            const data = await res.json();
+            container.innerHTML = "";
+            if (!data.feedback || !data.feedback.length) {
+                container.innerHTML = "<div class='muted'>No feedback yet</div>";
+                return;
+            }
+            data.feedback.forEach(f => {
+                const div = document.createElement("div");
+                div.className = "card";
+                div.style.flexDirection = "column";
+                div.innerHTML = `
+                    <div style="font-size:12px; color:var(--muted)">
+                        <strong>${f.tester_id}</strong> on thread ${f.thread_uuid}
+                        <span style="float:right">${new Date(f.created_at).toLocaleString()}</span>
+                    </div>
+                    <div style="margin-top:6px; white-space:pre-wrap;">${f.content}</div>
+                `;
+                container.appendChild(div);
+            });
+        } catch (err) {
+            container.innerHTML = "<div class='muted' style='color:red'>Failed to load feedback</div>";
+        }
     }
 
     async function fetchAccountsAndSpaces() {
@@ -390,8 +445,11 @@
       fetchAccountsAndSpaces();
     });
 
+    document.getElementById("refresh-feedback").addEventListener("click", loadFeedback);
+
     fetchAccountsAndSpaces();
     loadAgents();
+    loadFeedback();
   </script>
 </body>
 </html>
