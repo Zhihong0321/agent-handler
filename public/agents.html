@@ -200,8 +200,8 @@
       accountList.innerHTML = "";
       agentAccount.innerHTML = "";
       if (!accounts.length) {
-        accountList.innerHTML = "<div class='muted'>No accounts</div>";
-        agentAccount.innerHTML = "<option value=''>Select account</option>";
+        accountList.innerHTML = "<div class='muted'>No accounts (use manual entry)</div>";
+        agentAccount.innerHTML = "<option value=''>Type account manually below</option>";
         return;
       }
       accounts.forEach((a) => {
@@ -215,9 +215,14 @@
         div.appendChild(btn);
         accountList.appendChild(div);
       });
-      agentAccount.innerHTML = accounts
-        .map((a) => `<option value="${a.account_name || a.name}">${a.name || a.account_name}</option>`)
-        .join("");
+      agentAccount.innerHTML =
+        "<option value=''>Type account manually below</option>" +
+        accounts
+          .map(
+            (a) =>
+              `<option value="${a.account_name || a.name}">${a.name || a.account_name}</option>`,
+          )
+          .join("");
     }
 
     function renderSpaces() {
@@ -278,10 +283,20 @@
 
     async function fetchAccountsAndSpaces() {
       try {
-        const acc = await fetch("/api/wrapper/accounts").then((r) => r.json());
-        if (acc.accounts) accounts = acc.accounts;
-        const spacesRes = await fetch("/api/wrapper/spaces").then((r) => r.json());
-        if (spacesRes.spaces) spaces = spacesRes.spaces;
+        const accRes = await fetch("/api/wrapper/accounts");
+        const acc = await accRes.json();
+        if (acc.accounts) {
+          accounts = acc.accounts;
+        } else if (acc.error) {
+          accountList.innerHTML = `<div class='muted'>Accounts unavailable: ${acc.error}</div>`;
+        }
+        const spacesRes = await fetch("/api/wrapper/spaces");
+        const sp = await spacesRes.json();
+        if (sp.spaces) {
+          spaces = sp.spaces;
+        } else if (sp.error) {
+          spaceList.innerHTML = `<div class='muted'>Spaces unavailable: ${sp.error}</div>`;
+        }
         renderAccounts();
         renderSpaces();
       } catch (err) {
