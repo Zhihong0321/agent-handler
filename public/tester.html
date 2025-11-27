@@ -99,6 +99,8 @@
       display: flex; gap: 10px;
       border-top: 1px solid var(--border);
       flex-shrink: 0; /* Prevent footer from shrinking */
+      position: relative; /* Ensure z-index works if needed */
+      z-index: 10;
     }
     textarea {
       flex: 1;
@@ -112,6 +114,7 @@
       font-family: inherit;
       font-size: 15px;
     }
+    textarea:disabled { opacity: 0.5; cursor: not-allowed; }
     textarea:focus { outline: none; border-color: var(--accent); }
     .send-btn {
       background: var(--accent);
@@ -122,7 +125,15 @@
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       font-weight: bold;
+      transition: opacity 0.2s;
     }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .send-btn.loading {
+        animation: pulse 1.5s infinite;
+        background: var(--border);
+        color: var(--muted);
+    }
+    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
 
     /* Thread List Items */
     .thread-item {
@@ -219,6 +230,40 @@
     let currentThreadUuid = null;
     let threads = [];
     
+    // Sound Effects
+    const sounds = {
+        send: new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='), // Placeholder, will use real short blip
+        receive: new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=')
+    };
+    
+    // Real simple beeps generated via AudioContext instead of loading files to save bandwidth
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        if (type === 'send') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        } else {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+    }
+
     // --- Elements ---
     const els = {
       drawer: document.getElementById('drawer'),
@@ -336,8 +381,17 @@
         const text = els.input.value.trim();
         if (!text) return;
         
+        // Prevent spam / double submit
+        if (els.sendBtn.disabled) return;
+
+        // UI Updates
         appendBubble(text, 'user');
         els.input.value = '';
+        els.input.disabled = true;
+        els.sendBtn.disabled = true;
+        els.sendBtn.classList.add('loading');
+        els.sendBtn.textContent = ''; // Hide arrow
+        playSound('send');
         
         const payload = {
             customerId: testerId,
@@ -360,6 +414,7 @@
                 appendBubble('Error: ' + data.error, 'bot');
             } else {
                 appendBubble(data.reply, 'bot');
+                playSound('receive');
             }
             
             // Update thread ID if new
@@ -371,6 +426,13 @@
             }
         } catch (err) {
             appendBubble('Network Error', 'bot');
+        } finally {
+            // Reset UI
+            els.input.disabled = false;
+            els.sendBtn.disabled = false;
+            els.sendBtn.classList.remove('loading');
+            els.sendBtn.textContent = '>';
+            els.input.focus();
         }
     }
     
