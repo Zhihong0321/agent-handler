@@ -530,7 +530,7 @@ async function saveTesterThread(
   pool: any,
   testerId: string,
   threadUuid: string,
-  title?: string
+  title?: string | null
 ) {
   if (!pool || !testerId || !threadUuid) return;
   try {
@@ -539,7 +539,7 @@ async function saveTesterThread(
        VALUES ($1, $2, $3, NOW())
        ON CONFLICT (tester_id, thread_uuid)
        DO UPDATE SET updated_at = NOW(), title = COALESCE(EXCLUDED.title, tester_threads.title)`,
-      [testerId, threadUuid, title || "New Thread"]
+      [testerId, threadUuid, title ?? null]
     );
   } catch (err) {
     console.warn("Failed to save tester thread", err);
@@ -661,7 +661,7 @@ async function handleSyncQuery(
       getPool(),
       body.customerId,
       finalThreadUuid as string,
-      body.message.slice(0, 50)
+      null // Do not overwrite title
     );
   }
 
@@ -806,7 +806,7 @@ async function handleAsyncQuery(
            getPool(),
            body.customerId,
            frontendContextUuid,
-           body.message.slice(0, 50)
+           null // Do not overwrite title
          );
       }
     } else {
