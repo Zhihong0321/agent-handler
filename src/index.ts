@@ -85,6 +85,12 @@ async function buildServer() {
     reply.type("text/html").send(html);
   });
 
+  fastify.get("/tester.html", async (_, reply) => {
+    const testerPath = path.join(__dirname, "..", "public", "tester.html");
+    const html = await readFile(testerPath, "utf8");
+    reply.type("text/html").send(html);
+  });
+
   fastify.get("/api/agents", async () => {
     const agents = await Promise.resolve(agentStore.list());
     return { agents };
