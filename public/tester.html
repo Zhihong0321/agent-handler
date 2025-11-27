@@ -170,32 +170,50 @@
       background: var(--header); color: var(--text);
       border: 1px solid var(--border); border-radius: 12px;
       width: 90%; max-width: 320px;
+      padding: 0;
     }
     dialog::backdrop { background: rgba(0,0,0,0.7); }
     .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .modal-body textarea, .modal-body input {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .modal-body textarea:focus, .modal-body input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
     .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
-    .btn { padding: 8px; border-radius: 6px; border: none; flex: 1; cursor: pointer; font-weight: 600; }
+    .btn { padding: 10px 16px; border-radius: 6px; border: none; flex: 1; cursor: pointer; font-weight: 600; font-size: 14px; }
     .btn-primary { background: var(--accent); color: #0f172a; }
     .btn-secondary { background: var(--border); color: var(--text); }
+    .btn:hover { opacity: 0.9; }
+    .btn:active { transform: scale(0.98); }
   </style>
 </head>
 <body>
 
   <!-- Views -->
-  <div id="dashboard-view" style="display:flex; flex-direction:column; height:100%; padding:20px;">
-      <h2 style="text-align:center; margin-bottom:30px;" id="dash-agent-name">Agent Tester</h2>
+  <div id="dashboard-view" style="display:flex; flex-direction:column; height:100%; padding:20px; overflow:hidden;">
+      <h2 style="text-align:center; margin-bottom:30px; flex-shrink:0;" id="dash-agent-name">Agent Tester</h2>
       
-      <button class="new-chat-btn" id="dash-new-chat" style="padding:20px; font-size:16px; margin-bottom:30px; background:linear-gradient(135deg, #38bdf8, #0ea5e9); color:#0f172a; border:none; border-radius:16px; font-weight:bold; box-shadow:0 10px 25px rgba(56,189,248,0.25);">
+      <button class="new-chat-btn" id="dash-new-chat" style="padding:20px; font-size:16px; margin-bottom:30px; background:linear-gradient(135deg, #38bdf8, #0ea5e9); color:#0f172a; border:none; border-radius:16px; font-weight:bold; box-shadow:0 10px 25px rgba(56,189,248,0.25); flex-shrink:0;">
           + Start New Test Scenario
       </button>
       
-      <h4 style="color:var(--muted); text-transform:uppercase; font-size:12px; letter-spacing:1px; margin-bottom:15px;">Previous Scenarios</h4>
-      <div id="dash-thread-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
+      <h4 style="color:var(--muted); text-transform:uppercase; font-size:12px; letter-spacing:1px; margin-bottom:15px; flex-shrink:0;">Previous Scenarios</h4>
+      <div id="dash-thread-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; min-height:0;">
           <!-- Populated by JS -->
       </div>
   </div>
 
-  <div id="chat-view" style="display:none; flex-direction:column; height:100%;">
+  <div id="chat-view" style="display:none; flex-direction:column; height:100%; overflow:hidden;">
       <header>
         <button class="menu-btn" id="back-to-dash" style="font-size:18px; font-weight:bold;">←</button>
         <div class="agent-info" id="chat-title">Untitled</div>
@@ -218,9 +236,9 @@
   <!-- Feedback Modal -->
   <dialog id="feedback-modal">
     <div class="modal-body">
-      <h3>Thread Feedback</h3>
-      <p style="font-size: 13px; color: var(--muted);">Leave a comment about this conversation for the admin.</p>
-      <textarea id="feedback-text" style="height: 100px; width: 100%;" placeholder="E.g. Great answer, but missed the context..."></textarea>
+      <h3 style="margin-top:0;">Thread Feedback</h3>
+      <p style="font-size: 13px; color: var(--muted); margin-bottom:10px;">Leave a comment about this conversation for the admin.</p>
+      <textarea id="feedback-text" style="height: 100px; resize:vertical; min-height:60px; max-height:200px;" placeholder="E.g. Great answer, but missed the context..."></textarea>
       <div class="modal-actions">
         <button class="btn btn-secondary" id="cancel-feedback">Cancel</button>
         <button class="btn btn-primary" id="submit-feedback">Submit</button>
@@ -231,8 +249,8 @@
   <!-- Rename Modal -->
   <dialog id="rename-modal">
     <div class="modal-body">
-      <h3>Rename Chat</h3>
-      <input id="rename-input" placeholder="New chat title..." style="padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--input-bg); color:var(--text);" />
+      <h3 style="margin-top:0;">Rename Chat</h3>
+      <input id="rename-input" placeholder="New chat title..." />
       <div class="modal-actions">
         <button class="btn btn-secondary" id="cancel-rename">Cancel</button>
         <button class="btn btn-primary" id="submit-rename">Save</button>
@@ -419,7 +437,7 @@
         div.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center;">
              <div class="thread-title" style="flex:1; font-size:15px;">${t.title || 'Untitled Thread'}</div>
-             <button class="menu-btn" style="font-size:14px; padding:8px; color:var(--muted);" onclick="event.stopPropagation(); openRename('${t.thread_uuid}', '${t.title||''}')">✎</button>
+             <button class="menu-btn" style="font-size:14px; padding:8px; color:var(--muted);" onclick="event.stopPropagation(); openRename('${t.thread_uuid}', \`${(t.title||'').replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)">✎</button>
           </div>
           <div class="thread-date">${new Date(t.updated_at).toLocaleString()}</div>
         `;
@@ -432,6 +450,7 @@
         els.renameInput.dataset.uuid = uuid;
         els.renameInput.value = currentTitle || 'Untitled Thread';
         els.renameModal.showModal();
+        setTimeout(() => els.renameInput.focus(), 100);
     };
     
     els.cancelRename.onclick = () => els.renameModal.close();
@@ -611,7 +630,12 @@
     }
     
     els.sendBtn.onclick = sendMessage;
-    els.input.onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
+    els.input.onkeypress = (e) => { 
+      if(e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    };
 
     // --- Feedback ---
     els.feedbackBtn.onclick = () => {

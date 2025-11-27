@@ -158,8 +158,8 @@ class PostgresSessionStore implements ISessionStore {
         ON CONFLICT (customer_id) DO UPDATE SET
           account_name = EXCLUDED.account_name,
           collection_uuid = EXCLUDED.collection_uuid,
-          backend_uuid = COALESCE($4, sessions.backend_uuid),
-          frontend_context_uuid = COALESCE($5, sessions.frontend_context_uuid),
+          backend_uuid = $4,
+          frontend_context_uuid = $5,
           language = EXCLUDED.language,
           mode = EXCLUDED.mode,
           sources = EXCLUDED.sources,
