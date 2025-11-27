@@ -234,16 +234,26 @@
       </div>
       <div class="row">
         <div class="field">
-          <label for="agent-select">Agent</label>
-          <select id="agent-select">
-            <option value="">None (manual config)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>&nbsp;</label>
-          <button type="button" id="refresh-agents" class="secondary">Refresh agents</button>
+          <label>Agent</label>
+          <div style="display:flex; gap:10px;">
+             <div id="selected-agent-display" style="flex:1; padding:10px; background:#0b1222; border:1px solid var(--border); border-radius:10px; color:var(--muted); display:flex; align-items:center;">
+               None selected
+             </div>
+             <input type="hidden" id="agent-id-input" />
+             <button type="button" id="open-agent-modal" class="secondary" style="white-space:nowrap;">Select Agent</button>
+          </div>
         </div>
       </div>
+
+      <dialog id="agent-modal" style="background: #111827; color: white; border: 1px solid #38bdf8; border-radius: 14px; padding: 0; max-width: 400px; width: 90%;">
+        <div style="padding: 20px;">
+          <h3 style="margin-top:0">Select an Agent</h3>
+          <div id="agent-list-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; margin: 15px 0;">
+            <!-- List populated by JS -->
+          </div>
+          <button id="close-agent-modal" class="secondary" style="width: 100%;">Cancel</button>
+        </div>
+      </dialog>
       <div class="row">
         <div class="field">
           <label for="account-name">Account Name</label>
@@ -340,9 +350,59 @@
     const newThreadBtn = document.getElementById("new-thread");
     const loadThreadsBtn = document.getElementById("load-threads");
     const threadsContainer = document.getElementById("threads");
-    const agentSelect = document.getElementById("agent-select");
-    const refreshAgentsBtn = document.getElementById("refresh-agents");
-    // Removed createAgentBtn and related inputs as per instruction
+    const openModalBtn = document.getElementById("open-agent-modal");
+    const closeModalBtn = document.getElementById("close-agent-modal");
+    const agentModal = document.getElementById("agent-modal");
+    const agentListContainer = document.getElementById("agent-list-container");
+    const selectedDisplay = document.getElementById("selected-agent-display");
+    const agentIdInput = document.getElementById("agent-id-input");
+
+    // Modal Logic
+    openModalBtn.onclick = async () => {
+       agentModal.showModal();
+       agentListContainer.innerHTML = '<div class="muted">Loading...</div>';
+       try {
+         const res = await fetch("/api/agents");
+         const data = await res.json();
+         const list = data.agents || (Array.isArray(data) ? data : []);
+         
+         agentListContainer.innerHTML = "";
+         if (list.length === 0) {
+            agentListContainer.innerHTML = '<div class="muted">No agents found</div>';
+            return;
+         }
+         
+         list.forEach(agent => {
+            const btn = document.createElement("button");
+            btn.className = "secondary";
+            btn.style.textAlign = "left";
+            btn.style.padding = "10px";
+            btn.style.border = "1px solid var(--border)";
+            // Fallback for property names if they differ
+            const name = agent.name || agent.agent_name || "(Unnamed)";
+            const account = agent.accountName || agent.account_name || "Unknown Account";
+            const id = agent.id || agent.agent_id;
+            
+            btn.innerHTML = `<div><strong>${name}</strong></div><div style="font-size:11px; opacity:0.7">${account}</div>`;
+            btn.onclick = () => {
+               agentIdInput.value = id;
+               selectedDisplay.textContent = name;
+               selectedDisplay.style.color = "var(--text)";
+               // Update other fields if present in agent data
+               if (agent.accountName) accountInput.value = agent.accountName;
+               if (agent.collectionUuid) collectionInput.value = agent.collectionUuid;
+               if (agent.mode) modeInput.value = agent.mode;
+               
+               agentModal.close();
+            };
+            agentListContainer.appendChild(btn);
+         });
+       } catch (err) {
+         agentListContainer.innerHTML = `<div style="color:red">Error: ${err.message}</div>`;
+       }
+    };
+    
+    closeModalBtn.onclick = () => agentModal.close();
 
     const savedId = localStorage.getItem("customerId") || `local-${Math.random().toString(16).slice(2,8)}`;
     customerInput.value = savedId;
@@ -560,37 +620,7 @@
       fetchThreads();
     });
 
-    refreshAgentsBtn.addEventListener("click", () => {
-      loadAgents().catch((err) => {
-        appendBubble("Agent refresh failed", "bot");
-        log({ error: err.message });
-      });
-    });
-
-    // Removed createAgentBtn listener as per instruction
-
-    async function loadAgents() {
-      try {
-        log({ status: "Fetching agents..." });
-        const res = await fetch("/api/agents");
-        const data = await res.json();
-        
-        if (data.agents && Array.isArray(data.agents)) {
-          agents = data.agents;
-        } else if (Array.isArray(data)) {
-          agents = data;
-        } else {
-          agents = [];
-          log({ error: "Invalid agents response", data });
-        }
-        
-        populateAgents();
-        log({ status: "Agents loaded", count: agents.length, agents });
-      } catch (err) {
-        log({ error: "Agent fetch failed", details: err.message });
-        appendBubble("Failed to load agents. Check logs.", "bot");
-      }
-    }
+    // Replaced with Modal Logic above
 
     releaseBtn.addEventListener("click", async () => {
       const customerId = customerInput.value.trim();
@@ -609,15 +639,6 @@
         appendBubble("State release failed", "bot");
         log({ error: err.message });
       }
-    });
-
-    // Replace the simple call at the bottom with robust initialization
-    document.addEventListener("DOMContentLoaded", () => {
-      console.log("DOM ready, loading agents...");
-      loadAgents().catch((err) => {
-        console.error("Init failed:", err);
-        log({ error: "Init failed", details: err.message });
-      });
     });
   </script>
 </body>
