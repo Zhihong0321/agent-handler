@@ -92,9 +92,16 @@ async function buildServer() {
       const accounts = await perplexityClient.listAccounts();
       return { accounts };
     } catch (err) {
-      request.log.error({ err }, "failed to list accounts");
+      const status = (err as any)?.response?.status;
+      const data = (err as any)?.response?.data;
+      request.log.error({ err, status, data }, "failed to list accounts");
       reply.code(500);
-      return { error: "failed to list accounts", detail: (err as Error).message };
+      return {
+        error: "failed to list accounts",
+        detail: (err as Error).message,
+        status,
+        body: data,
+      };
     }
   });
 
@@ -121,12 +128,16 @@ async function buildServer() {
       const spaces = await perplexityClient.listCollections(accountName);
       return { spaces };
     } catch (err) {
-      request.log.error({ err }, "failed to list spaces");
+      const status = (err as any)?.response?.status;
+      const data = (err as any)?.response?.data;
+      request.log.error({ err, status, data }, "failed to list spaces");
       reply.code(500);
       return {
         error: "failed to list spaces",
         detail: (err as Error).message,
         accountName: accountName || "(none)",
+        status,
+        body: data,
       };
     }
   });
