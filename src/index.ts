@@ -70,9 +70,54 @@ async function buildServer() {
     reply.type("text/html").send(html);
   });
 
+  fastify.get("/agents", async (_, reply) => {
+    const agentsPath = path.join(__dirname, "..", "public", "agents.html");
+    const html = await readFile(agentsPath, "utf8");
+    reply.type("text/html").send(html);
+  });
+
   fastify.get("/api/agents", async () => {
     const agents = await Promise.resolve(agentStore.list());
     return { agents };
+  });
+
+  fastify.get("/api/wrapper/accounts", async (request, reply) => {
+    try {
+      const accounts = await perplexityClient.listAccounts();
+      return { accounts };
+    } catch (err) {
+      request.log.error({ err }, "failed to list accounts");
+      reply.code(500);
+      return { error: "failed to list accounts", detail: (err as Error).message };
+    }
+  });
+
+  fastify.post("/api/wrapper/accounts/:name/test", async (request, reply) => {
+    const name = (request.params as { name: string }).name;
+    if (!name) {
+      reply.code(400);
+      return { error: "account name is required" };
+    }
+    try {
+      const result = await perplexityClient.testAccount(name);
+      return { result };
+    } catch (err) {
+      request.log.error({ err }, "failed to test account");
+      reply.code(500);
+      return { error: "failed to test account", detail: (err as Error).message };
+    }
+  });
+
+  fastify.get("/api/wrapper/spaces", async (request, reply) => {
+    const accountName = (request.query as { accountName?: string }).accountName;
+    try {
+      const spaces = await perplexityClient.listCollections(accountName);
+      return { spaces };
+    } catch (err) {
+      request.log.error({ err }, "failed to list spaces");
+      reply.code(500);
+      return { error: "failed to list spaces", detail: (err as Error).message };
+    }
   });
 
   fastify.post("/api/agents", async (request, reply) => {
@@ -110,6 +155,33 @@ async function buildServer() {
       request.log.error({ err }, "failed to create agent");
       reply.code(500);
       return { error: "failed to create agent", detail: (err as Error).message };
+    }
+  });
+
+  fastify.get("/api/agents/:agentId/test", async (request, reply) => {
+    const agentId = (request.params as { agentId: string }).agentId;
+    const message = (request.query as { message?: string }).message || "Hello from agent test";
+    const agent = await agentStore.get(agentId);
+    if (!agent) {
+      reply.code(404);
+      return { error: "agent not found" };
+    }
+    try {
+      const response = await perplexityClient.querySync({
+        q: message,
+        accountName: agent.accountName,
+        collectionUuid: agent.collectionUuid ?? undefined,
+        mode: agent.mode,
+        sources: agent.sources,
+        language: agent.language,
+        answerOnly: agent.answerOnly ?? config.answerOnly,
+        model: agent.model,
+      });
+      return { reply: extractAnswer(response), raw: response };
+    } catch (err) {
+      request.log.error({ err, agentId }, "agent test failed");
+      reply.code(500);
+      return { error: "agent test failed", detail: (err as Error).message };
     }
   });
 

@@ -83,6 +83,25 @@ export class PerplexityClient {
     });
     return response.data;
   }
+
+  async listAccounts() {
+    const response = await this.client.get("/api/account/list");
+    return response.data;
+  }
+
+  async testAccount(accountName: string) {
+    const response = await this.client.post(`/api/account/test/${encodeURIComponent(accountName)}`);
+    return response.data;
+  }
+
+  async listCollections(accountName?: string) {
+    const response = await this.client.get("/api/collections", {
+      params: {
+        account_name: accountName || undefined,
+      },
+    });
+    return response.data;
+  }
 }
 
 export const perplexityClient = new PerplexityClient(config.perplexityBaseUrl);
