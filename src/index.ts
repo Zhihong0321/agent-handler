@@ -105,6 +105,10 @@ async function buildServer() {
     }
   });
 
+  fastify.get("/api/wrapper/defaults", async () => {
+    return { defaultAccount: config.defaultAccount || null };
+  });
+
   fastify.post("/api/wrapper/accounts/:name/test", async (request, reply) => {
     const name = (request.params as { name: string }).name;
     if (!name) {
@@ -124,6 +128,10 @@ async function buildServer() {
   fastify.get("/api/wrapper/spaces", async (request, reply) => {
     const accountName =
       (request.query as { accountName?: string }).accountName || config.defaultAccount || undefined;
+    if (!accountName) {
+      reply.code(400);
+      return { error: "accountName is required (set query param or DEFAULT_ACCOUNT_NAME)" };
+    }
     try {
       const spaces = await perplexityClient.listCollections(accountName);
       return { spaces };

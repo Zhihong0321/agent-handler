@@ -191,6 +191,7 @@
     let accounts = [];
     let spaces = [];
     let agents = [];
+    let defaultAccount = "";
 
     function log(obj) {
       logs.textContent = JSON.stringify(obj, null, 2);
@@ -283,6 +284,8 @@
 
     async function fetchAccountsAndSpaces() {
       try {
+        const defaults = await fetch("/api/wrapper/defaults").then((r) => r.json());
+        defaultAccount = defaults.defaultAccount || "";
         const accRes = await fetch("/api/wrapper/accounts");
         const acc = await accRes.json();
         if (acc.accounts) {
@@ -290,7 +293,9 @@
         } else if (acc.error) {
           accountList.innerHTML = `<div class='muted'>Accounts unavailable: ${acc.error}${acc.detail ? " - " + acc.detail : ""}${acc.status ? " (status " + acc.status + ")" : ""}${acc.body ? " " + JSON.stringify(acc.body) : ""}</div>`;
         }
-        const spacesRes = await fetch("/api/wrapper/spaces");
+        const useAccount =
+          agentAccount.value || (accounts[0] && (accounts[0].account_name || accounts[0].name)) || defaultAccount;
+        const spacesRes = await fetch(`/api/wrapper/spaces?accountName=${encodeURIComponent(useAccount || "")}`);
         const sp = await spacesRes.json();
         if (sp.spaces) {
           spaces = sp.spaces;
@@ -332,9 +337,9 @@
         const res = await fetch("/api/agents", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          const payload = {
             name: agentName.value,
-            accountName: agentAccount.value,
+            accountName: agentAccount.value || defaultAccount,
             collectionUuid: agentCollection.value || undefined,
             mode: agentMode.value || undefined,
             sources: agentSources.value || undefined,
@@ -342,7 +347,16 @@
             model: agentModel.value || undefined,
             answerOnly: agentAnswerOnly.checked,
             incognito: agentIncognito.checked,
-          }),
+          };
+          if (!payload.accountName) {
+            alert("Account name is required. Set DEFAULT_ACCOUNT_NAME or select an account.");
+            return;
+          }
+          const res = await fetch("/api/agents", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
         });
         const data = await res.json();
         log(data);
