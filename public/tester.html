@@ -209,6 +209,18 @@
       </div>
     </div>
   </dialog>
+  
+  <!-- Rename Modal -->
+  <dialog id="rename-modal">
+    <div class="modal-body">
+      <h3>Rename Chat</h3>
+      <input id="rename-input" placeholder="New chat title..." style="padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--input-bg); color:var(--text);" />
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancel-rename">Cancel</button>
+        <button class="btn btn-primary" id="submit-rename">Save</button>
+      </div>
+    </div>
+  </dialog>
 
   <script>
     // --- State & Config ---
@@ -281,6 +293,10 @@
       feedbackText: document.getElementById('feedback-text'),
       cancelFeedback: document.getElementById('cancel-feedback'),
       submitFeedback: document.getElementById('submit-feedback'),
+      renameModal: document.getElementById('rename-modal'),
+      renameInput: document.getElementById('rename-input'),
+      cancelRename: document.getElementById('cancel-rename'),
+      submitRename: document.getElementById('submit-rename'),
     };
 
     // --- Init ---
@@ -326,11 +342,18 @@
 
     function renderThreads() {
       els.threadList.innerHTML = '';
+      if (!threads.length) {
+          els.threadList.innerHTML = '<div style="padding:15px; color:var(--muted); text-align:center; font-size:13px;">No history yet.</div>';
+          return;
+      }
       threads.forEach(t => {
         const div = document.createElement('div');
         div.className = 'thread-item';
         div.innerHTML = `
-          <div class="thread-title">${t.title || 'Untitled Thread'}</div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+             <div class="thread-title" style="flex:1">${t.title || 'Untitled Thread'}</div>
+             <button class="menu-btn" style="font-size:14px; padding:4px;" onclick="event.stopPropagation(); openRename('${t.thread_uuid}', '${t.title||''}')">✎</button>
+          </div>
           <div class="thread-date">${new Date(t.updated_at).toLocaleString()}</div>
         `;
         div.onclick = () => switchThread(t.thread_uuid);
@@ -338,6 +361,34 @@
         els.threadList.appendChild(div);
       });
     }
+
+    window.openRename = (uuid, currentTitle) => {
+        els.renameInput.dataset.uuid = uuid;
+        els.renameInput.value = currentTitle || 'Untitled Thread';
+        els.renameModal.showModal();
+    };
+    
+    els.cancelRename.onclick = () => els.renameModal.close();
+    els.submitRename.onclick = async () => {
+        const uuid = els.renameInput.dataset.uuid;
+        const newTitle = els.renameInput.value.trim();
+        if (!uuid || !newTitle) return;
+        
+        try {
+            await fetch('/api/tester/threads/rename', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ testerId, threadUuid: uuid, title: newTitle })
+            });
+            // Update local list
+            const t = threads.find(x => x.thread_uuid === uuid);
+            if (t) t.title = newTitle;
+            renderThreads();
+            els.renameModal.close();
+        } catch (err) {
+            alert('Failed to rename');
+        }
+    };
 
     async function switchThread(uuid) {
         if (currentThreadUuid === uuid) {

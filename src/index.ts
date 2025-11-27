@@ -479,6 +479,29 @@ async function buildServer() {
     }
   });
 
+  fastify.post("/api/tester/threads/rename", async (request, reply) => {
+    const body = request.body as { testerId: string; threadUuid: string; title: string };
+    if (!body.testerId || !body.threadUuid || !body.title) {
+      reply.code(400);
+      return { error: "testerId, threadUuid, and title are required" };
+    }
+    const pool = getPool();
+    if (!pool) {
+      reply.code(500);
+      return { error: "Database not configured" };
+    }
+    try {
+      await pool.query(
+        "UPDATE tester_threads SET title = $1, updated_at = NOW() WHERE tester_id = $2 AND thread_uuid = $3",
+        [body.title, body.testerId, body.threadUuid]
+      );
+      return { status: "ok" };
+    } catch (err) {
+      reply.code(500);
+      return { error: "Failed to rename thread", detail: (err as Error).message };
+    }
+  });
+
   return fastify;
 }
 
