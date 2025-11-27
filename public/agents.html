@@ -288,14 +288,14 @@
         if (acc.accounts) {
           accounts = acc.accounts;
         } else if (acc.error) {
-          accountList.innerHTML = `<div class='muted'>Accounts unavailable: ${acc.error}</div>`;
+          accountList.innerHTML = `<div class='muted'>Accounts unavailable: ${acc.error}${acc.detail ? " - " + acc.detail : ""}</div>`;
         }
         const spacesRes = await fetch("/api/wrapper/spaces");
         const sp = await spacesRes.json();
         if (sp.spaces) {
           spaces = sp.spaces;
         } else if (sp.error) {
-          spaceList.innerHTML = `<div class='muted'>Spaces unavailable: ${sp.error}</div>`;
+          spaceList.innerHTML = `<div class='muted'>Spaces unavailable: ${sp.error}${sp.detail ? " - " + sp.detail : ""}</div>`;
         }
         renderAccounts();
         renderSpaces();

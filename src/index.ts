@@ -115,14 +115,19 @@ async function buildServer() {
   });
 
   fastify.get("/api/wrapper/spaces", async (request, reply) => {
-    const accountName = (request.query as { accountName?: string }).accountName;
+    const accountName =
+      (request.query as { accountName?: string }).accountName || config.defaultAccount || undefined;
     try {
       const spaces = await perplexityClient.listCollections(accountName);
       return { spaces };
     } catch (err) {
       request.log.error({ err }, "failed to list spaces");
       reply.code(500);
-      return { error: "failed to list spaces", detail: (err as Error).message };
+      return {
+        error: "failed to list spaces",
+        detail: (err as Error).message,
+        accountName: accountName || "(none)",
+      };
     }
   });
 
