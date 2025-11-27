@@ -523,6 +523,30 @@ async function buildServer() {
     }
   });
 
+  fastify.post("/api/tester/threads/delete", async (request, reply) => {
+    const body = request.body as { testerId: string; threadUuid: string };
+    if (!body.testerId || !body.threadUuid) {
+      reply.code(400);
+      return { error: "testerId and threadUuid are required" };
+    }
+    const pool = getPool();
+    if (!pool) {
+      reply.code(500);
+      return { error: "Database not configured" };
+    }
+    try {
+      await pool.query("DELETE FROM tester_threads WHERE tester_id = $1 AND thread_uuid = $2", [
+        body.testerId,
+        body.threadUuid,
+      ]);
+      await pool.query("DELETE FROM messages WHERE thread_uuid = $1", [body.threadUuid]);
+      return { status: "ok" };
+    } catch (err) {
+      reply.code(500);
+      return { error: "Failed to delete thread", detail: (err as Error).message };
+    }
+  });
+
   return fastify;
 }
 

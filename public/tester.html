@@ -196,7 +196,10 @@
       <header>
         <button class="menu-btn" id="back-to-dash" style="font-size:18px; font-weight:bold;">←</button>
         <div class="agent-info" id="chat-title">Untitled</div>
-        <button class="feedback-btn" id="feedback-btn">Feedback</button>
+        <div style="display:flex; gap:8px;">
+            <button class="menu-btn" id="delete-thread-btn" style="font-size:18px; color:var(--muted);" title="Delete Thread">🗑️</button>
+            <button class="feedback-btn" id="feedback-btn">Feedback</button>
+        </div>
       </header>
 
       <main id="chat-box">
@@ -316,6 +319,7 @@
       renameInput: document.getElementById('rename-input'),
       cancelRename: document.getElementById('cancel-rename'),
       submitRename: document.getElementById('submit-rename'),
+      deleteThreadBtn: document.getElementById('delete-thread-btn'),
     };
 
     // --- Init ---
@@ -362,6 +366,29 @@
         currentThreadUuid = null;
         localStorage.removeItem('last_thread_uuid_' + config.agentId);
         showDashboard();
+    };
+
+    els.deleteThreadBtn.onclick = async () => {
+        if (!currentThreadUuid) return;
+        if (!confirm("Are you sure you want to delete this thread? This action cannot be undone.")) return;
+        
+        try {
+            const res = await fetch('/api/tester/threads/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ testerId, threadUuid: currentThreadUuid })
+            });
+            if (res.ok) {
+                // Success: Return to dashboard
+                currentThreadUuid = null;
+                localStorage.removeItem('last_thread_uuid_' + config.agentId);
+                showDashboard();
+            } else {
+                alert("Failed to delete thread");
+            }
+        } catch (err) {
+            alert("Error deleting thread");
+        }
     };
 
     // --- Threads ---
