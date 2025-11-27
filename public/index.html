@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perplexity Agent Playground</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --accent: #38bdf8;
+      --muted: #6b7280;
+      --border: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #1e293b 0, #0f172a 45%),
+                  radial-gradient(circle at 80% 10%, #0ea5e9 0, transparent 35%),
+                  radial-gradient(circle at 60% 70%, #10b981 0, transparent 25%),
+                  #0f172a;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { margin: 0; font-size: 20px; letter-spacing: 0.4px; }
+    header .tag {
+      padding: 4px 10px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 12px;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      padding: 0 20px 20px;
+      flex: 1;
+    }
+    @media (max-width: 960px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    .messages {
+      height: 60vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 6px;
+    }
+    .bubble {
+      padding: 12px 14px;
+      border-radius: 12px;
+      max-width: 90%;
+      white-space: pre-wrap;
+      line-height: 1.4;
+    }
+    .bubble.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #0b1222;
+      font-weight: 600;
+    }
+    .bubble.bot {
+      align-self: flex-start;
+      background: #111827;
+      border: 1px solid var(--border);
+    }
+    form {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    textarea, input, select, button {
+      font: inherit;
+      color: var(--text);
+    }
+    textarea {
+      flex: 1;
+      background: #0b1222;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      min-height: 62px;
+      resize: vertical;
+    }
+    button {
+      background: linear-gradient(135deg, #38bdf8, #22d3ee);
+      border: none;
+      color: #0b1222;
+      font-weight: 700;
+      padding: 0 18px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      box-shadow: 0 10px 25px rgba(34, 211, 238, 0.35);
+    }
+    button:active { transform: translateY(1px); box-shadow: none; }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .field label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .field input, .field select {
+      background: #0b1222;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+    .pill {
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #0b1222;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .thread-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      max-height: 260px;
+      overflow: auto;
+    }
+    .thread-card {
+      background: #0b1222;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .thread-card h4 {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .thread-card small { color: var(--muted); word-break: break-all; }
+    .thread-card button {
+      align-self: flex-start;
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 8px;
+      box-shadow: none;
+    }
+    .agent-card {
+      background: #0b1222;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .logs {
+      background: #0b1222;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      max-height: 200px;
+      overflow: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+    .actions { display: flex; gap: 10px; align-items: center; }
+    .secondary {
+      background: #0b1222;
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: #0b1222;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .badge.positive { border-color: rgba(16,185,129,0.5); color: #10b981; }
+    .badge.warning { border-color: rgba(234,179,8,0.5); color: #eab308; }
+    .badge.danger { border-color: rgba(239,68,68,0.5); color: #ef4444; }
+    .label-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Perplexity Agent Playground</h1>
+    <span class="tag">Spaces + Sessions</span>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="messages" id="messages"></div>
+      <form id="chat-form">
+        <textarea id="message" placeholder="Ask anything..." required></textarea>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button type="submit">Send</button>
+          <button type="button" class="secondary" id="reset-btn">Reset</button>
+        </div>
+      </form>
+    </section>
+    <section class="panel">
+      <div class="field">
+        <label for="customer-id">Customer / Session ID</label>
+        <input id="customer-id" placeholder="e.g. test-user" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="agent-select">Agent</label>
+          <select id="agent-select">
+            <option value="">None (manual config)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button type="button" id="refresh-agents" class="secondary">Refresh agents</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="account-name">Account Name</label>
+          <input id="account-name" placeholder="wrapper account_name (required)" required />
+        </div>
+        <div class="field">
+          <label for="collection-uuid">Custom Space (collection_uuid)</label>
+          <input id="collection-uuid" placeholder="optional collection uuid" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="auto">auto</option>
+            <option value="writing">writing</option>
+            <option value="coding">coding</option>
+            <option value="research">research</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sources">Sources</label>
+          <select id="sources">
+            <option value="web">web</option>
+            <option value="scholar">scholar</option>
+            <option value="social">social</option>
+            <option value="web,scholar">web,scholar</option>
+            <option value="web,social">web,social</option>
+            <option value="scholar,social">scholar,social</option>
+            <option value="web,scholar,social">web,scholar,social</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="language">Language</label>
+        <input id="language" value="en-US" />
+      </div>
+      <div class="actions">
+        <label class="toggle">
+          <input type="checkbox" id="parse-actions" />
+          Parse actions (JSON) from model
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="answer-only" checked />
+          Answer only
+        </label>
+      </div>
+      <div class="label-row">
+        <div class="pill" id="session-pill">Session: none</div>
+        <div class="badge" id="state-pill">State: bot</div>
+        <button type="button" class="secondary" id="release-btn">Release to bot</button>
+      </div>
+      <div class="logs" id="logs"></div>
+      <hr style="border: 1px solid var(--border); margin: 16px 0;" />
+      <div class="row">
+        <div class="field">
+          <label for="thread-id">Thread (frontend_context_uuid)</label>
+          <input id="thread-id" placeholder="auto when selecting a thread" />
+        </div>
+        <div class="field">
+          <label for="backend-id">Backend UUID (advanced)</label>
+          <input id="backend-id" placeholder="leave blank for new thread" />
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" id="apply-thread">Set thread</button>
+        <button type="button" id="new-thread">New thread id</button>
+        <button type="button" class="secondary" id="load-threads">Refresh threads</button>
+      </div>
+      <div class="thread-list" id="threads"></div>
+      <hr style="border: 1px solid var(--border); margin: 16px 0;" />
+      <div class="field">
+        <label>Create Agent</label>
+        <div class="row">
+          <div class="field">
+            <label for="agent-name">Name</label>
+            <input id="agent-name" placeholder="Agent name" />
+          </div>
+          <div class="field">
+            <label for="agent-account">Account</label>
+            <input id="agent-account" placeholder="account_name" />
+          </div>
+          <div class="field">
+            <label for="agent-collection">Space (collection_uuid)</label>
+            <input id="agent-collection" placeholder="optional" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="agent-mode">Mode</label>
+            <select id="agent-mode">
+              <option value="">(use default)</option>
+              <option value="auto">auto</option>
+              <option value="writing">writing</option>
+              <option value="coding">coding</option>
+              <option value="research">research</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="agent-sources">Sources</label>
+            <input id="agent-sources" placeholder="web,scholar,social" />
+          </div>
+          <div class="field">
+            <label for="agent-language">Language</label>
+            <input id="agent-language" placeholder="en-US" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="agent-model">Model</label>
+            <input id="agent-model" placeholder="optional model name" />
+          </div>
+          <div class="field">
+            <label class="toggle">
+              <input type="checkbox" id="agent-answer-only" checked />
+              Answer only
+            </label>
+          </div>
+          <div class="field">
+            <label class="toggle">
+              <input type="checkbox" id="agent-incognito" />
+              Incognito
+            </label>
+          </div>
+        </div>
+        <button type="button" id="create-agent">Save Agent</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    const messages = document.getElementById("messages");
+    const form = document.getElementById("chat-form");
+    const textarea = document.getElementById("message");
+    const resetBtn = document.getElementById("reset-btn");
+    const sessionPill = document.getElementById("session-pill");
+    const logs = document.getElementById("logs");
+
+    const customerInput = document.getElementById("customer-id");
+    const accountInput = document.getElementById("account-name");
+    const collectionInput = document.getElementById("collection-uuid");
+    const modeInput = document.getElementById("mode");
+    const sourcesInput = document.getElementById("sources");
+    const languageInput = document.getElementById("language");
+    const parseActionsInput = document.getElementById("parse-actions");
+    const answerOnlyInput = document.getElementById("answer-only");
+    const statePill = document.getElementById("state-pill");
+    const releaseBtn = document.getElementById("release-btn");
+    const threadIdInput = document.getElementById("thread-id");
+    const backendIdInput = document.getElementById("backend-id");
+    const applyThreadBtn = document.getElementById("apply-thread");
+    const newThreadBtn = document.getElementById("new-thread");
+    const loadThreadsBtn = document.getElementById("load-threads");
+    const threadsContainer = document.getElementById("threads");
+    const agentSelect = document.getElementById("agent-select");
+    const refreshAgentsBtn = document.getElementById("refresh-agents");
+    const createAgentBtn = document.getElementById("create-agent");
+    const agentNameInput = document.getElementById("agent-name");
+    const agentAccountInput = document.getElementById("agent-account");
+    const agentCollectionInput = document.getElementById("agent-collection");
+    const agentModeInput = document.getElementById("agent-mode");
+    const agentSourcesInput = document.getElementById("agent-sources");
+    const agentLanguageInput = document.getElementById("agent-language");
+    const agentModelInput = document.getElementById("agent-model");
+    const agentAnswerOnlyInput = document.getElementById("agent-answer-only");
+    const agentIncognitoInput = document.getElementById("agent-incognito");
+
+    const savedId = localStorage.getItem("customerId") || `local-${Math.random().toString(16).slice(2,8)}`;
+    customerInput.value = savedId;
+    let sessionState = null;
+    let agents = [];
+    let sessionState = null;
+
+    function appendBubble(text, role) {
+      const div = document.createElement("div");
+      div.className = `bubble ${role}`;
+      div.textContent = text;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function log(obj) {
+      logs.textContent = JSON.stringify(obj, null, 2);
+    }
+
+    function setStatePill(state) {
+      const map = {
+        bot: { text: "State: bot", cls: "badge" },
+        human_handoff: { text: "State: human_handoff", cls: "badge warning" },
+        ticket_open: { text: "State: ticket_open", cls: "badge danger" },
+      };
+      const cfg = map[state] || map.bot;
+      statePill.className = cfg.cls;
+      statePill.textContent = cfg.text;
+    }
+
+    function setSession(session) {
+      sessionState = session;
+      if (!session) return;
+      sessionPill.textContent = `Session: ${session.customerId}`;
+      if (session.frontendContextUuid) threadIdInput.value = session.frontendContextUuid;
+      if (session.backendUuid) backendIdInput.value = session.backendUuid;
+      if (session.state) setStatePill(session.state);
+    }
+
+    function populateAgents() {
+      agentSelect.innerHTML = '<option value="">None (manual config)</option>';
+      agents.forEach((a) => {
+        const opt = document.createElement("option");
+        opt.value = a.id;
+        opt.textContent = a.name;
+        agentSelect.appendChild(opt);
+      });
+    }
+
+    function renderThreads(list) {
+      threadsContainer.innerHTML = "";
+      if (!Array.isArray(list) || list.length === 0) {
+        threadsContainer.innerHTML = "<small style='color: var(--muted);'>No threads</small>";
+        return;
+      }
+      list.forEach((t) => {
+        const card = document.createElement("div");
+        card.className = "thread-card";
+        const title = document.createElement("h4");
+        title.textContent = t.title || t.slug || "Untitled";
+        const slug = document.createElement("small");
+        slug.textContent = t.slug || "";
+        const id = document.createElement("small");
+        id.textContent = t.frontend_context_uuid || t.id || "";
+        const btn = document.createElement("button");
+        btn.className = "secondary";
+        btn.textContent = "Use thread";
+        btn.onclick = async () => {
+          const threadId = t.frontend_context_uuid || t.id || t.slug;
+          if (threadId) {
+            threadIdInput.value = threadId;
+            backendIdInput.value = "";
+            await applyThread();
+          }
+        };
+        card.appendChild(title);
+        if (slug.textContent) card.appendChild(slug);
+        if (id.textContent) card.appendChild(id);
+        card.appendChild(btn);
+        threadsContainer.appendChild(card);
+      });
+    }
+
+    async function sendMessage(resetSession = false) {
+      const customerId = customerInput.value.trim() || `local-${Math.random().toString(16).slice(2,8)}`;
+      localStorage.setItem("customerId", customerId);
+      sessionPill.textContent = `Session: ${customerId}`;
+
+      const payload = {
+        customerId,
+        message: textarea.value,
+        accountName: accountInput.value || undefined,
+        collectionUuid: collectionInput.value || undefined,
+        frontendContextUuid: threadIdInput.value || undefined,
+        backendUuid: backendIdInput.value || undefined,
+        mode: modeInput.value,
+        sources: sourcesInput.value,
+        language: languageInput.value,
+        resetSession,
+        parseActions: parseActionsInput.checked,
+        answerOnly: answerOnlyInput.checked,
+        agentId: agentSelect.value || undefined,
+      };
+
+      appendBubble(textarea.value, "user");
+      textarea.value = "";
+
+      const res = await fetch("/api/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        appendBubble(`Error: ${data.error}`, "bot");
+      } else {
+        appendBubble(data.reply, "bot");
+      }
+      if (data.session) setSession(data.session);
+      if (data.session?.state) {
+        setStatePill(data.session.state);
+      }
+      if (data.action) {
+        appendBubble(
+          `[action ${data.action.status}] ${data.action.action ? JSON.stringify(data.action.action) : ""}`,
+          "bot",
+        );
+      }
+      log(data);
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!textarea.value.trim()) return;
+      sendMessage(false).catch((err) => {
+        appendBubble("Request failed", "bot");
+        log({ error: err.message });
+      });
+    });
+
+    resetBtn.addEventListener("click", () => {
+      sendMessage(true).catch((err) => {
+        appendBubble("Reset failed", "bot");
+        log({ error: err.message });
+      });
+    });
+
+    async function applyThread() {
+      const customerId = customerInput.value.trim();
+      if (!customerId) {
+        appendBubble("Set a customer/session id first", "bot");
+        return;
+      }
+      const body = {
+        frontendContextUuid: threadIdInput.value || null,
+        backendUuid: backendIdInput.value || null,
+      };
+      const res = await fetch(`/api/session/${encodeURIComponent(customerId)}/thread`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.session) setSession(data.session);
+      log(data);
+    }
+
+    applyThreadBtn.addEventListener("click", () => {
+      applyThread().catch((err) => {
+        appendBubble("Thread update failed", "bot");
+        log({ error: err.message });
+      });
+    });
+
+    newThreadBtn.addEventListener("click", () => {
+      const id = crypto.randomUUID ? crypto.randomUUID() : `thread-${Date.now()}`;
+      threadIdInput.value = id;
+      backendIdInput.value = "";
+      applyThread().catch((err) => {
+        appendBubble("Thread update failed", "bot");
+        log({ error: err.message });
+      });
+    });
+
+    async function fetchThreads() {
+      const accountName = accountInput.value.trim();
+      if (!accountName) {
+        appendBubble("Set account name to load threads", "bot");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/threads?accountName=${encodeURIComponent(accountName)}`);
+        const data = await res.json();
+        if (data.threads) {
+          renderThreads(data.threads);
+        }
+        log(data);
+      } catch (err) {
+        appendBubble("Thread fetch failed", "bot");
+        log({ error: err.message });
+      }
+    }
+
+    loadThreadsBtn.addEventListener("click", () => {
+      fetchThreads();
+    });
+
+    refreshAgentsBtn.addEventListener("click", () => {
+      loadAgents().catch((err) => {
+        appendBubble("Agent refresh failed", "bot");
+        log({ error: err.message });
+      });
+    });
+
+    createAgentBtn.addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/agents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: agentNameInput.value,
+            accountName: agentAccountInput.value,
+            collectionUuid: agentCollectionInput.value || undefined,
+            mode: agentModeInput.value || undefined,
+            sources: agentSourcesInput.value || undefined,
+            language: agentLanguageInput.value || undefined,
+            model: agentModelInput.value || undefined,
+            answerOnly: agentAnswerOnlyInput.checked,
+            incognito: agentIncognitoInput.checked,
+          }),
+        });
+        const data = await res.json();
+        if (data.agent) {
+          appendBubble("Agent saved", "bot");
+          await loadAgents();
+          agentSelect.value = data.agent.id;
+        } else if (data.error) {
+          appendBubble(`Agent error: ${data.error}`, "bot");
+        }
+        log(data);
+      } catch (err) {
+        appendBubble("Agent save failed", "bot");
+        log({ error: err.message });
+      }
+    });
+
+    async function loadAgents() {
+      const res = await fetch("/api/agents");
+      const data = await res.json();
+      if (data.agents) {
+        agents = data.agents;
+        populateAgents();
+      }
+      log(data);
+    }
+
+    releaseBtn.addEventListener("click", async () => {
+      const customerId = customerInput.value.trim();
+      if (!customerId) return;
+      try {
+        const res = await fetch(`/api/session/${encodeURIComponent(customerId)}/state`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state: "bot" }),
+        });
+        const data = await res.json();
+        if (data.session) setSession(data.session);
+        log(data);
+        appendBubble("State released to bot", "bot");
+      } catch (err) {
+        appendBubble("State release failed", "bot");
+        log({ error: err.message });
+      }
+    });
+
+    // initial load
+    loadAgents().catch(console.error);
+  </script>
+</body>
+</html>
