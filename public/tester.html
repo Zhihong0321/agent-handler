@@ -71,6 +71,7 @@
       -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
       min-height: 0; /* Crucial for flex containers */
       overscroll-behavior: contain; /* Prevent body scroll chaining */
+      position: relative; /* Helps with stacking */
     }
     .bubble {
       max-width: 85%;
@@ -105,6 +106,7 @@
       flex: 0 0 auto; /* Prevent footer from shrinking */
       position: relative; /* Ensure z-index works if needed */
       z-index: 10;
+      min-height: 66px; /* Enforce minimum height */
     }
     textarea {
       flex: 1;
