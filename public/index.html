@@ -449,12 +449,21 @@
     }
 
     function populateAgents() {
-      agentSelect.innerHTML = '<option value="">None (manual config)</option>';
+      const select = document.getElementById("agent-select");
+      select.innerHTML = '<option value="">None (manual config)</option>';
+      
+      if (!agents || agents.length === 0) {
+        const opt = document.createElement("option");
+        opt.disabled = true;
+        opt.textContent = "-- No Agents Found --";
+        select.appendChild(opt);
+      }
+
       agents.forEach((a) => {
         const opt = document.createElement("option");
         opt.value = a.id;
         opt.textContent = a.name;
-        agentSelect.appendChild(opt);
+        select.appendChild(opt);
       });
     }
 
@@ -660,22 +669,24 @@
 
     async function loadAgents() {
       try {
+        log({ status: "Fetching agents..." });
         const res = await fetch("/api/agents");
         const data = await res.json();
-        if (data.agents) {
+        
+        if (data.agents && Array.isArray(data.agents)) {
           agents = data.agents;
-          populateAgents();
         } else if (Array.isArray(data)) {
-             // fallback if the API returns the array directly (legacy behavior check)
-             agents = data;
-             populateAgents();
-        } else if (data.error) {
-          appendBubble(`Agent load error: ${data.error}`, "bot");
+          agents = data;
+        } else {
+          agents = [];
+          log({ error: "Invalid agents response", data });
         }
-        log(data);
+        
+        populateAgents();
+        log({ status: "Agents loaded", count: agents.length, agents });
       } catch (err) {
-        appendBubble("Agent load failed", "bot");
-        log({ error: err.message });
+        log({ error: "Agent fetch failed", details: err.message });
+        appendBubble("Failed to load agents. Check logs.", "bot");
       }
     }
 
