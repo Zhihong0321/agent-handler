@@ -642,7 +642,9 @@
           }),
         });
         const data = await res.json();
-        if (data.agent) {
+        if (!res.ok) {
+          appendBubble(`Agent error: ${data.error || res.statusText}`, "bot");
+        } else if (data.agent) {
           appendBubble("Agent saved", "bot");
           await loadAgents();
           agentSelect.value = data.agent.id;
@@ -657,13 +659,20 @@
     });
 
     async function loadAgents() {
-      const res = await fetch("/api/agents");
-      const data = await res.json();
-      if (data.agents) {
-        agents = data.agents;
-        populateAgents();
+      try {
+        const res = await fetch("/api/agents");
+        const data = await res.json();
+        if (data.agents) {
+          agents = data.agents;
+          populateAgents();
+        } else if (data.error) {
+          appendBubble(`Agent load error: ${data.error}`, "bot");
+        }
+        log(data);
+      } catch (err) {
+        appendBubble("Agent load failed", "bot");
+        log({ error: err.message });
       }
-      log(data);
     }
 
     releaseBtn.addEventListener("click", async () => {

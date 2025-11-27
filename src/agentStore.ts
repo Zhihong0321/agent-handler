@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { getPool } from "./db";
+import { ensureTables, getPool } from "./db";
 import { AgentConfig } from "./types";
 import crypto from "crypto";
 
@@ -103,6 +103,7 @@ async function createAgentStore(): Promise<IAgentStore> {
   const pool = getPool();
   if (pool) {
     try {
+        await ensureTables();
       return new PostgresAgentStore(pool);
     } catch (err) {
       console.error("Agent store init failed; falling back to memory", err);
