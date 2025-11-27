@@ -92,6 +92,7 @@
   <div class="grid">
     <section class="panel">
       <h3>Create / Update Agent</h3>
+      <div id="account-warning" class="muted" style="color:#f87171; margin-bottom:8px;"></div>
       <div class="field">
         <label for="agent-name">Name</label>
         <input id="agent-name" placeholder="Agent name" />
@@ -192,6 +193,7 @@
     let spaces = [];
     let agents = [];
     let defaultAccount = "";
+    let wrapperStatus = "unknown";
 
     function log(obj) {
       logs.textContent = JSON.stringify(obj, null, 2);
@@ -200,6 +202,12 @@
     function renderAccounts() {
       accountList.innerHTML = "";
       agentAccount.innerHTML = "";
+      const warning = document.getElementById("account-warning");
+      if (!accounts.length && !defaultAccount) {
+        warning.textContent = "Set DEFAULT_ACCOUNT_NAME in env or pick an account via Refresh.";
+      } else {
+        warning.textContent = "";
+      }
       if (!accounts.length) {
         accountList.innerHTML = "<div class='muted'>No accounts (use manual entry)</div>";
         agentAccount.innerHTML = "<option value=''>Type account manually below</option>";
@@ -286,6 +294,8 @@
       try {
         const defaults = await fetch("/api/wrapper/defaults").then((r) => r.json());
         defaultAccount = defaults.defaultAccount || "";
+        const wrapper = await fetch("/health").then((r) => r.json());
+        wrapperStatus = wrapper.wrapper?.status || "unknown";
         const accRes = await fetch("/api/wrapper/accounts");
         const acc = await accRes.json();
         if (acc.accounts) {
@@ -295,6 +305,11 @@
         }
         const useAccount =
           agentAccount.value || (accounts[0] && (accounts[0].account_name || accounts[0].name)) || defaultAccount;
+        if (!useAccount) {
+          spaceList.innerHTML = "<div class='muted'>Set account and verify before loading spaces.</div>";
+          renderAccounts();
+          return;
+        }
         const spacesRes = await fetch(`/api/wrapper/spaces?accountName=${encodeURIComponent(useAccount || "")}`);
         const sp = await spacesRes.json();
         if (sp.spaces) {
@@ -334,6 +349,10 @@
 
     saveAgentBtn.addEventListener("click", async () => {
       try {
+        if (!agentAccount.value && !defaultAccount) {
+          alert("Set and verify an account before saving an agent.");
+          return;
+        }
         const payload = {
           name: agentName.value,
           accountName: agentAccount.value || defaultAccount,
