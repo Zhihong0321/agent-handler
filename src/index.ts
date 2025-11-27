@@ -510,8 +510,11 @@ async function buildServer() {
     }
     try {
       await pool.query(
-        "UPDATE tester_threads SET title = $1, updated_at = NOW() WHERE tester_id = $2 AND thread_uuid = $3",
-        [body.title, body.testerId, body.threadUuid]
+        `INSERT INTO tester_threads (tester_id, thread_uuid, title, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (tester_id, thread_uuid)
+         DO UPDATE SET title = EXCLUDED.title, updated_at = NOW()`,
+        [body.testerId, body.threadUuid, body.title]
       );
       return { status: "ok" };
     } catch (err) {

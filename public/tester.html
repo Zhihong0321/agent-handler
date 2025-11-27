@@ -460,18 +460,31 @@
     }
 
     els.newChat.onclick = async () => {
-        currentThreadUuid = null; // Will generate new on first message
+        const name = prompt("Enter a name for this test scenario (e.g. 'Angry Customer'):");
+        if (!name) return; // Cancelled
+
+        currentThreadUuid = crypto.randomUUID ? crypto.randomUUID() : `thread-${Date.now()}`;
         localStorage.removeItem('last_thread_uuid_' + config.agentId);
         
-        // Reset backend session thread
+        // 1. Create thread entry immediately with the name
+        try {
+            await fetch('/api/tester/threads/rename', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ testerId, threadUuid: currentThreadUuid, title: name })
+            });
+        } catch(e) { console.error(e); }
+
+        // 2. Reset backend session
         await fetch(`/api/session/${testerId}/thread`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ frontendContextUuid: null, backendUuid: null })
+            body: JSON.stringify({ frontendContextUuid: currentThreadUuid, backendUuid: null })
         });
-        els.chatBox.innerHTML = '<div style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px;">New Chat Started</div>';
+
+        els.chatBox.innerHTML = `<div style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px;">Scenario: <strong>${name}</strong><br>Start chatting...</div>`;
         toggleDrawer(false);
-        renderThreads();
+        loadThreads(); // Refresh drawer to show the new item immediately
     };
 
     // --- Messaging ---
