@@ -129,11 +129,22 @@
     }
     .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .send-btn.loading {
-        animation: pulse 1.5s infinite;
         background: var(--border);
-        color: var(--muted);
+        color: transparent;
+        position: relative;
     }
-    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+    .send-btn.loading::after {
+        content: "";
+        position: absolute;
+        top: 50%; left: 50%;
+        width: 16px; height: 16px;
+        margin: -8px 0 0 -8px;
+        border: 2px solid var(--text);
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     /* Thread List Items */
     .thread-item {
@@ -323,6 +334,7 @@
     
     // --- UI Logic ---
     function toggleDrawer(open) {
+      if (open) loadThreads(); // Always refresh list when opening
       els.drawer.classList.toggle('open', open);
       els.overlay.classList.toggle('open', open);
     }

@@ -605,14 +605,7 @@ async function handleSyncQuery(
     (response as QueryResponsePayload).frontend_context_uuid as string | undefined,
   );
 
-  if ((response as QueryResponsePayload).frontend_context_uuid) {
-    await saveTesterThread(
-      getPool(),
-      body.customerId,
-      (response as QueryResponsePayload).frontend_context_uuid as string,
-      body.message.slice(0, 50)
-    );
-  }
+  // Duplicate block removed - moved to end of function with fallback
 
   request.log.info(
     {
@@ -628,6 +621,17 @@ async function handleSyncQuery(
 
   if (answer) {
     await safeLogMessage(body.customerId, "assistant", answer);
+  }
+
+  // Save to tester history if applicable
+  const finalThreadUuid = (response as QueryResponsePayload).frontend_context_uuid || session.frontendContextUuid;
+  if (finalThreadUuid) {
+    await saveTesterThread(
+      getPool(),
+      body.customerId,
+      finalThreadUuid as string,
+      body.message.slice(0, 50)
+    );
   }
 
   return {
