@@ -709,8 +709,14 @@
       }
     });
 
-    // initial load
-    loadAgents().catch(console.error);
+    // Replace the simple call at the bottom with robust initialization
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log("DOM ready, loading agents...");
+      loadAgents().catch((err) => {
+        console.error("Init failed:", err);
+        log({ error: "Init failed", details: err.message });
+      });
+    });
   </script>
 </body>
 </html>
