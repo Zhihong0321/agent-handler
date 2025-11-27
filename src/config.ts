@@ -18,6 +18,6 @@ export const config = {
   streaming: {
     chunkSize: Number(process.env.STREAMING_CHUNK_SIZE || 800),
   },
-  postgresUrl: process.env.POSTGRES_URL || null,
+  postgresUrl: process.env.POSTGRES_URL || process.env.DATABASE_URL || null,
   postgresMaxConnections: Number(process.env.POSTGRES_MAX_CONNECTIONS || 10),
 };
