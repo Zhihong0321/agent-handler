@@ -178,36 +178,36 @@
 </head>
 <body>
 
-  <!-- Sidebar -->
-  <div class="overlay" id="overlay"></div>
-  <div class="drawer" id="drawer">
-    <div class="drawer-header">
-      <span>My Threads</span>
-      <button class="menu-btn" id="close-drawer">&times;</button>
-    </div>
-    <div class="drawer-content">
-      <button class="new-chat-btn" id="new-chat">New Chat +</button>
-      <div id="thread-list"></div>
-    </div>
+  <!-- Views -->
+  <div id="dashboard-view" style="display:flex; flex-direction:column; height:100%; padding:20px;">
+      <h2 style="text-align:center; margin-bottom:30px;" id="dash-agent-name">Agent Tester</h2>
+      
+      <button class="new-chat-btn" id="dash-new-chat" style="padding:20px; font-size:16px; margin-bottom:30px; background:linear-gradient(135deg, #38bdf8, #0ea5e9); color:#0f172a; border:none; border-radius:16px; font-weight:bold; box-shadow:0 10px 25px rgba(56,189,248,0.25);">
+          + Start New Test Scenario
+      </button>
+      
+      <h4 style="color:var(--muted); text-transform:uppercase; font-size:12px; letter-spacing:1px; margin-bottom:15px;">Previous Scenarios</h4>
+      <div id="dash-thread-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
+          <!-- Populated by JS -->
+      </div>
   </div>
 
-  <!-- Main View -->
-  <header>
-    <button class="menu-btn" id="open-drawer">&#9776;</button>
-    <div class="agent-info" id="agent-name">Agent</div>
-    <button class="feedback-btn" id="feedback-btn">Feedback</button>
-  </header>
+  <div id="chat-view" style="display:none; flex-direction:column; height:100%;">
+      <header>
+        <button class="menu-btn" id="back-to-dash" style="font-size:18px; font-weight:bold;">←</button>
+        <div class="agent-info" id="chat-title">Untitled</div>
+        <button class="feedback-btn" id="feedback-btn">Feedback</button>
+      </header>
 
-  <main id="chat-box">
-    <div style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px;">
-      Start chatting to test this agent.
-    </div>
-  </main>
+      <main id="chat-box">
+        <!-- Bubbles -->
+      </main>
 
-  <footer id="input-area">
-    <textarea id="message-input" placeholder="Type a message..."></textarea>
-    <button class="send-btn" id="send-btn">></button>
-  </footer>
+      <footer id="input-area">
+        <textarea id="message-input" placeholder="Type a message..."></textarea>
+        <button class="send-btn" id="send-btn">></button>
+      </footer>
+  </div>
 
   <!-- Feedback Modal -->
   <dialog id="feedback-modal">
@@ -290,17 +290,24 @@
 
     // --- Elements ---
     const els = {
-      drawer: document.getElementById('drawer'),
-      overlay: document.getElementById('overlay'),
-      openDrawer: document.getElementById('open-drawer'),
-      closeDrawer: document.getElementById('close-drawer'),
-      threadList: document.getElementById('thread-list'),
-      newChat: document.getElementById('new-chat'),
+      // Views
+      dashboardView: document.getElementById('dashboard-view'),
+      chatView: document.getElementById('chat-view'),
+      
+      // Dashboard
+      dashAgentName: document.getElementById('dash-agent-name'),
+      dashNewChat: document.getElementById('dash-new-chat'),
+      dashThreadList: document.getElementById('dash-thread-list'),
+      
+      // Chat
+      chatTitle: document.getElementById('chat-title'),
+      backToDash: document.getElementById('back-to-dash'),
       chatBox: document.getElementById('chat-box'),
       input: document.getElementById('message-input'),
       sendBtn: document.getElementById('send-btn'),
-      agentName: document.getElementById('agent-name'),
       feedbackBtn: document.getElementById('feedback-btn'),
+      
+      // Modals
       feedbackModal: document.getElementById('feedback-modal'),
       feedbackText: document.getElementById('feedback-text'),
       cancelFeedback: document.getElementById('cancel-feedback'),
@@ -323,34 +330,39 @@
         const data = await res.json();
         const agent = (data.agents || []).find(a => a.id === config.agentId);
         if (agent) {
-          els.agentName.textContent = agent.name;
+          els.dashAgentName.textContent = `${agent.name} Tester`;
         }
       } catch (e) { console.error(e); }
 
       await loadThreads();
       
-      // Auto-load last thread
+      // Check if we have a saved active thread
       const lastThread = localStorage.getItem('last_thread_uuid_' + config.agentId);
-      if (lastThread) {
-          // Verify it still exists in the list (user might have cleared it on backend, though unlikely)
-          // or just try to load it.
-          if (threads.find(t => t.thread_uuid === lastThread)) {
-              switchThread(lastThread);
-          } else {
-              localStorage.removeItem('last_thread_uuid_' + config.agentId);
-          }
+      if (lastThread && threads.find(t => t.thread_uuid === lastThread)) {
+          switchThread(lastThread);
+      } else {
+          showDashboard();
       }
     }
     
-    // --- UI Logic ---
-    function toggleDrawer(open) {
-      if (open) loadThreads(); // Always refresh list when opening
-      els.drawer.classList.toggle('open', open);
-      els.overlay.classList.toggle('open', open);
+    // --- View Management ---
+    function showDashboard() {
+        els.dashboardView.style.display = 'flex';
+        els.chatView.style.display = 'none';
+        loadThreads(); // Refresh list
     }
-    els.openDrawer.onclick = () => toggleDrawer(true);
-    els.closeDrawer.onclick = () => toggleDrawer(false);
-    els.overlay.onclick = () => toggleDrawer(false);
+    
+    function showChat(title) {
+        els.dashboardView.style.display = 'none';
+        els.chatView.style.display = 'flex';
+        els.chatTitle.textContent = title || 'Untitled';
+    }
+    
+    els.backToDash.onclick = () => {
+        currentThreadUuid = null;
+        localStorage.removeItem('last_thread_uuid_' + config.agentId);
+        showDashboard();
+    };
 
     // --- Threads ---
     async function loadThreads() {
@@ -363,24 +375,26 @@
     }
 
     function renderThreads() {
-      els.threadList.innerHTML = '';
+      els.dashThreadList.innerHTML = '';
       if (!threads.length) {
-          els.threadList.innerHTML = '<div style="padding:15px; color:var(--muted); text-align:center; font-size:13px;">No history yet.</div>';
+          els.dashThreadList.innerHTML = '<div style="padding:20px; color:var(--muted); text-align:center; font-size:14px; background:rgba(255,255,255,0.03); border-radius:12px;">No test history.<br>Start a new scenario above.</div>';
           return;
       }
       threads.forEach(t => {
         const div = document.createElement('div');
         div.className = 'thread-item';
+        div.style.background = 'rgba(255,255,255,0.05)';
+        div.style.borderRadius = '12px';
+        div.style.marginBottom = '0';
         div.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center;">
-             <div class="thread-title" style="flex:1">${t.title || 'Untitled Thread'}</div>
-             <button class="menu-btn" style="font-size:14px; padding:4px;" onclick="event.stopPropagation(); openRename('${t.thread_uuid}', '${t.title||''}')">✎</button>
+             <div class="thread-title" style="flex:1; font-size:15px;">${t.title || 'Untitled Thread'}</div>
+             <button class="menu-btn" style="font-size:14px; padding:8px; color:var(--muted);" onclick="event.stopPropagation(); openRename('${t.thread_uuid}', '${t.title||''}')">✎</button>
           </div>
           <div class="thread-date">${new Date(t.updated_at).toLocaleString()}</div>
         `;
-        div.onclick = () => switchThread(t.thread_uuid);
-        if (t.thread_uuid === currentThreadUuid) div.style.background = 'rgba(255,255,255,0.1)';
-        els.threadList.appendChild(div);
+        div.onclick = () => switchThread(t.thread_uuid, t.title);
+        els.dashThreadList.appendChild(div);
       });
     }
 
@@ -405,6 +419,7 @@
             // Update local list
             const t = threads.find(x => x.thread_uuid === uuid);
             if (t) t.title = newTitle;
+            if (currentThreadUuid === uuid) els.chatTitle.textContent = newTitle;
             renderThreads();
             els.renameModal.close();
         } catch (err) {
@@ -435,13 +450,13 @@
         }
     }
 
-    async function switchThread(uuid) {
-        if (currentThreadUuid === uuid) {
-            toggleDrawer(false);
-            return;
-        }
+    async function switchThread(uuid, title) {
+        if (currentThreadUuid === uuid && els.chatView.style.display !== 'none') return;
+        
         currentThreadUuid = uuid;
-        toggleDrawer(false);
+        const t = threads.find(x => x.thread_uuid === uuid);
+        showChat(title || (t ? t.title : 'Untitled'));
+        
         els.chatBox.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted)">Loading history...</div>';
         
         // Load messages
@@ -456,35 +471,39 @@
         
         // Persist current thread
         localStorage.setItem('last_thread_uuid_' + config.agentId, uuid);
-        renderThreads(); // Update highlight
     }
 
-    els.newChat.onclick = async () => {
+    els.dashNewChat.onclick = async () => {
         const name = prompt("Enter a name for this test scenario (e.g. 'Angry Customer'):");
         if (!name) return; // Cancelled
 
-        currentThreadUuid = crypto.randomUUID ? crypto.randomUUID() : `thread-${Date.now()}`;
-        localStorage.removeItem('last_thread_uuid_' + config.agentId);
+        const newUuid = crypto.randomUUID ? crypto.randomUUID() : `thread-${Date.now()}`;
         
         // 1. Create thread entry immediately with the name
         try {
-            await fetch('/api/tester/threads/rename', {
+            const res = await fetch('/api/tester/threads/rename', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ testerId, threadUuid: currentThreadUuid, title: name })
+                body: JSON.stringify({ testerId, threadUuid: newUuid, title: name })
             });
-        } catch(e) { console.error(e); }
+            if (!res.ok) throw new Error('Failed to create thread');
+        } catch(e) { 
+            alert("Error creating thread. Please try again.");
+            return; 
+        }
 
         // 2. Reset backend session
         await fetch(`/api/session/${testerId}/thread`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ frontendContextUuid: currentThreadUuid, backendUuid: null })
+            body: JSON.stringify({ frontendContextUuid: newUuid, backendUuid: null })
         });
 
+        // 3. Switch to view (manually set empty state)
+        currentThreadUuid = newUuid;
+        localStorage.setItem('last_thread_uuid_' + config.agentId, newUuid);
+        showChat(name);
         els.chatBox.innerHTML = `<div style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px;">Scenario: <strong>${name}</strong><br>Start chatting...</div>`;
-        toggleDrawer(false);
-        loadThreads(); // Refresh drawer to show the new item immediately
     };
 
     // --- Messaging ---
