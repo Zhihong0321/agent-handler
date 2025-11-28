@@ -20,7 +20,8 @@ import { collectDbMetrics } from "./metrics";
 import { logMessage, MessageRole } from "./messageLog";
 import { buildActionPrompt } from "./prompt";
 import { agentStorePromise } from "./agentStore";
-import { getBillData } from "./billService";
+import { readFileSync } from "fs";
+import path from "path";
 
 const rateLimiter = new RateLimiter(config.rateLimit.max, config.rateLimit.windowMs);
 
@@ -52,8 +53,9 @@ async function buildServer() {
   });
 
   fastify.get("/bill", async (_, reply) => {
-    const data = await getBillData();
-    return data;
+    const jsonPath = path.join(process.cwd(), "bill.json");
+    const data = readFileSync(jsonPath, "utf-8");
+    reply.type("application/json").send(data);
   });
 
   fastify.get("/metrics", async () => {
