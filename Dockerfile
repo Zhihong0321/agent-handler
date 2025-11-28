@@ -11,6 +11,7 @@ COPY src ./src
 COPY public ./public
 COPY docs ./docs
 COPY .env.example ./
+COPY bill.csv ./
 
 # Build and prune dev deps
 RUN npm run build && npm prune --production
