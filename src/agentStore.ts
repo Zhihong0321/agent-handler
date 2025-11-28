@@ -24,7 +24,11 @@ class MemoryAgentStore implements IAgentStore {
 
   create(agent: Omit<AgentConfig, "id"> & { id?: string }) {
     const id = agent.id || crypto.randomUUID();
-    const toSave: AgentConfig = { ...agent, id };
+    const toSave: AgentConfig = { 
+      ...agent, 
+      id,
+      agentType: agent.agentType || "perplexity" // Default to perplexity for backward compatibility
+    };
     this.store.set(id, toSave);
     return toSave;
   }
@@ -50,12 +54,13 @@ class PostgresAgentStore implements IAgentStore {
     const res = await this.pool.query(
       `
         INSERT INTO agents (
-          id, name, account_name, collection_uuid, model, mode, sources, language, answer_only, incognito,
+          id, name, agent_type, account_name, collection_uuid, model, mode, sources, language, answer_only, incognito, system_prompt,
           created_at, updated_at
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
+          agent_type = EXCLUDED.agent_type,
           account_name = EXCLUDED.account_name,
           collection_uuid = EXCLUDED.collection_uuid,
           model = EXCLUDED.model,
@@ -64,12 +69,14 @@ class PostgresAgentStore implements IAgentStore {
           language = EXCLUDED.language,
           answer_only = EXCLUDED.answer_only,
           incognito = EXCLUDED.incognito,
+          system_prompt = EXCLUDED.system_prompt,
           updated_at = NOW()
         RETURNING *;
       `,
       [
         id,
         agent.name,
+        agent.agentType || "perplexity", // Default to perplexity for backward compatibility
         agent.accountName,
         agent.collectionUuid ?? null,
         agent.model ?? null,
@@ -78,6 +85,7 @@ class PostgresAgentStore implements IAgentStore {
         agent.language ?? null,
         agent.answerOnly ?? null,
         agent.incognito ?? null,
+        agent.systemPrompt ?? null, // For custom GEMS
       ],
     );
     return mapRow(res.rows[0]);
@@ -88,6 +96,7 @@ function mapRow(row: any): AgentConfig {
   return {
     id: row.id,
     name: row.name,
+    agentType: row.agent_type || "perplexity", // Default to perplexity for backward compatibility
     accountName: row.account_name,
     collectionUuid: row.collection_uuid,
     model: row.model,
@@ -96,6 +105,7 @@ function mapRow(row: any): AgentConfig {
     language: row.language,
     answerOnly: row.answer_only ?? undefined,
     incognito: row.incognito ?? undefined,
+    systemPrompt: row.system_prompt, // For custom GEMS
   };
 }
 

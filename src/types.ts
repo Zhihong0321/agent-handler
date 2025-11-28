@@ -1,4 +1,5 @@
 export type QueryMode = "auto" | "writing" | "coding" | "research";
+export type AgentType = "perplexity" | "gemini";
 
 export interface SessionState {
   customerId: string;
@@ -19,6 +20,7 @@ export type SessionStatus = "bot" | "human_handoff" | "ticket_open";
 export interface AgentConfig {
   id: string;
   name: string;
+  agentType: AgentType;
   accountName: string;
   collectionUuid?: string | null;
   model?: string | null;
@@ -27,6 +29,7 @@ export interface AgentConfig {
   language?: string;
   answerOnly?: boolean;
   incognito?: boolean;
+  systemPrompt?: string | null; // For custom GEMS
 }
 
 export interface MessageRequest {

@@ -7,11 +7,14 @@ import { join } from "node:path";
 import { config } from "./config";
 import { ISessionStore, sessionStorePromise } from "./sessionStore";
 import { perplexityClient } from "./perplexityClient";
+import { geminiClient } from "./geminiClient";
+import { AgentFactory } from "./agentFactory";
 import {
   MessageRequest,
   QueryResponsePayload,
   WhatsAppWebhookPayload,
   SessionState,
+  AgentConfig,
 } from "./types";
 import { RateLimiter } from "./rateLimiter";
 import { getPool } from "./db";
@@ -104,13 +107,19 @@ async function buildServer() {
   });
 
   fastify.get("/api/wrapper/accounts", async (request, reply) => {
+    const agentType = (request.query as { agentType?: string }).agentType || "perplexity";
     try {
-      const result = await perplexityClient.listAccounts();
-      const accounts = Object.entries((result as any).accounts || {}).map(([key, val]) => ({
-        ...(val as any),
-        account_name: key,
-      }));
-      return { accounts };
+      if (agentType === "gemini") {
+        const result = await AgentFactory.listAgentAccounts("gemini");
+        return { accounts: result };
+      } else {
+        const result = await perplexityClient.listAccounts();
+        const accounts = Object.entries((result as any).accounts || {}).map(([key, val]) => ({
+          ...(val as any),
+          account_name: key,
+        }));
+        return { accounts };
+      }
     } catch (err) {
       const status = (err as any)?.response?.status;
       const data = (err as any)?.response?.data;
@@ -131,13 +140,19 @@ async function buildServer() {
 
   fastify.post("/api/wrapper/accounts/:name/test", async (request, reply) => {
     const name = (request.params as { name: string }).name;
+    const agentType = (request.query as { agentType?: string }).agentType || "perplexity";
     if (!name) {
       reply.code(400);
       return { error: "account name is required" };
     }
     try {
-      const result = await perplexityClient.testAccount(name);
-      return { result };
+      if (agentType === "gemini") {
+        const result = await geminiClient.testAccount(name);
+        return { result };
+      } else {
+        const result = await perplexityClient.testAccount(name);
+        return { result };
+      }
     } catch (err) {
       request.log.error({ err }, "failed to test account");
       reply.code(500);
@@ -174,6 +189,7 @@ async function buildServer() {
   fastify.post("/api/agents", async (request, reply) => {
     const body = (request.body || {}) as {
       name?: string;
+      agentType?: string;
       accountName?: string;
       collectionUuid?: string;
       model?: string;
@@ -182,6 +198,7 @@ async function buildServer() {
       language?: string;
       answerOnly?: boolean;
       incognito?: boolean;
+      systemPrompt?: string; // For custom GEMS
     };
     if (!body.name || !body.accountName) {
       reply.code(400);
@@ -191,6 +208,7 @@ async function buildServer() {
       const agent = await Promise.resolve(
         agentStore.create({
           name: body.name,
+          agentType: (body.agentType as any) || "perplexity", // Default to perplexity
           accountName: body.accountName,
           collectionUuid: body.collectionUuid,
           model: body.model,
@@ -199,6 +217,8 @@ async function buildServer() {
           language: body.language,
           answerOnly: body.answerOnly,
           incognito: body.incognito,
+          // For Gemini agents, systemPrompt contains GEMS URL
+          systemPrompt: body.systemPrompt,
         }),
       );
       return { agent };
@@ -218,17 +238,12 @@ async function buildServer() {
       return { error: "agent not found" };
     }
     try {
-      const response = await perplexityClient.querySync({
-        q: message,
-        accountName: agent.accountName,
-        collectionUuid: agent.collectionUuid ?? undefined,
-        mode: agent.mode,
-        sources: agent.sources,
-        language: agent.language,
-        answerOnly: agent.answerOnly ?? config.answerOnly,
-        model: agent.model,
+      const response = await AgentFactory.executeQuery(agent, {
+        message,
+        customerId: "test",
+        parseActions: false
       });
-      return { reply: extractAnswer(response), raw: response };
+      return { reply: response.reply, raw: response.raw };
     } catch (err) {
       request.log.error({ err, agentId }, "agent test failed");
       reply.code(500);
@@ -615,20 +630,40 @@ async function handleSyncQuery(
 
   const query = body.parseActions ? buildActionPrompt(body.message) : body.message;
 
-  const response = await perplexityClient.querySync({
-    q: query,
+  // Get agent to determine type
+  const agentStore = await agentStorePromise;
+  const agent = body.agentId ? await agentStore.get(body.agentId) : null;
+  const effectiveAgent: AgentConfig = agent ? agent : {
+    id: "default",
+    name: "Default Agent",
+    agentType: "perplexity",
     accountName: merged.accountName,
-    backendUuid: merged.backendUuid,
-    collectionUuid: merged.collectionUuid ?? undefined,
-    frontendContextUuid: merged.frontendContextUuid ?? undefined,
+    collectionUuid: merged.collectionUuid,
+    model: merged.model,
     mode: merged.mode,
     sources: merged.sources,
     language: merged.language,
     answerOnly: merged.answerOnly,
-    model: merged.model,
+    incognito: false,
+  };
+
+  const response = await AgentFactory.executeQuery(effectiveAgent, {
+    message: query,
+    customerId: body.customerId,
+    sessionId: merged.frontendContextUuid, // This will be null for new sessions
+    parseActions: body.parseActions
   });
 
-  const answer = extractAnswer(response);
+  const answer = response.reply;
+  
+  // Update session with new session ID if returned
+  if (response.sessionId && !merged.frontendContextUuid) {
+    await sessionStore.updateThreadIdentifiers(
+      body.customerId,
+      response.backendUuid,
+      response.sessionId
+    );
+  }
 
   let actionResult = null;
   if (body.parseActions && answer) {
@@ -661,14 +696,10 @@ async function handleSyncQuery(
     }
   }
 
-  await sessionStore.updateThreadIdentifiers(
-    body.customerId,
-    (response as QueryResponsePayload).backend_uuid as string | undefined,
-    (response as QueryResponsePayload).frontend_context_uuid as string | undefined,
-  );
+  // Session identifiers are already updated above based on response
 
   // Check if API returned a NEW thread ID (e.g. if currentThreadId was null)
-  const responseThreadId = (response as QueryResponsePayload).frontend_context_uuid as string | undefined;
+  const responseThreadId = response.sessionId as string | undefined;
   const effectiveThreadId = currentThreadId || responseThreadId;
 
   request.log.info(
@@ -746,17 +777,28 @@ async function handleAsyncQuery(
     "processing async query",
   );
 
-  const upstream = await perplexityClient.queryAsync({
-    q: query,
+  // Get agent to determine type
+  const agentStore = await agentStorePromise;
+  const agent = body.agentId ? await agentStore.get(body.agentId) : null;
+  const effectiveAgent: AgentConfig = agent ? agent : {
+    id: "default",
+    name: "Default Agent",
+    agentType: "perplexity",
     accountName: merged.accountName,
-    backendUuid: merged.backendUuid,
-    collectionUuid: merged.collectionUuid ?? undefined,
-    frontendContextUuid: merged.frontendContextUuid ?? undefined,
+    collectionUuid: merged.collectionUuid,
+    model: merged.model,
     mode: merged.mode,
     sources: merged.sources,
     language: merged.language,
     answerOnly: merged.answerOnly,
-    model: merged.model,
+    incognito: false,
+  };
+
+  const upstream = await AgentFactory.executeQueryAsync(effectiveAgent, {
+    message: query,
+    customerId: body.customerId,
+    sessionId: merged.frontendContextUuid,
+    parseActions: body.parseActions
   });
 
   reply.raw.writeHead(200, {
@@ -826,11 +868,16 @@ async function handleAsyncQuery(
     reply.raw.end();
 
     if (status === "done") {
-      const backendUuid =
-        (lastPayload as QueryResponsePayload | null)?.backend_uuid || session.backendUuid;
+      const backendUuid = 
+        effectiveAgent.agentType === "gemini" 
+          ? null // Gemini doesn't use backendUuid
+          : ((lastPayload as any)?.backend_uuid || session.backendUuid);
       
       // Source of truth logic: Use API response if new, otherwise session/merged
-      const responseThreadId = (lastPayload as QueryResponsePayload | null)?.frontend_context_uuid;
+      const responseThreadId = 
+        effectiveAgent.agentType === "gemini"
+          ? (lastPayload as any)?.session_id
+          : (lastPayload as any)?.frontend_context_uuid;
       const effectiveThreadId = responseThreadId || currentThreadId; // using captured currentThreadId from closure
 
       request.log.info(
@@ -884,19 +931,31 @@ async function handleAsyncQuery(
         const parsed = JSON.parse(dataStr) as Record<string, unknown>;
         lastPayload = parsed;
 
-        const text = extractAnswer(parsed);
-        if (text) {
-          chunker.push(text);
+        // Handle response parsing differently based on agent type
+        let text = "";
+        let backendUuid: string | undefined;
+        let frontendContextUuid: string | undefined;
+
+        if (effectiveAgent.agentType === "gemini") {
+          // Gemini response format
+          text = parsed.response || "";
+          frontendContextUuid = parsed.session_id as string | undefined;
+        } else {
+          // Perplexity response format
+          text = extractAnswer(parsed);
+          backendUuid = parsed.backend_uuid as string | undefined;
+          frontendContextUuid = parsed.frontend_context_uuid as string | undefined;
+
+          // Support new wrapper format (nested in content)
+          if (!backendUuid && !frontendContextUuid && parsed.content && typeof parsed.content === "object") {
+            const content = parsed.content as Record<string, unknown>;
+            backendUuid = content.backend_uuid as string | undefined;
+            frontendContextUuid = content.frontend_context_uuid as string | undefined;
+          }
         }
 
-        let backendUuid = parsed.backend_uuid as string | undefined;
-        let frontendContextUuid = parsed.frontend_context_uuid as string | undefined;
-
-        // Support new wrapper format (nested in content)
-        if (!backendUuid && !frontendContextUuid && parsed.content && typeof parsed.content === "object") {
-          const content = parsed.content as Record<string, unknown>;
-          backendUuid = content.backend_uuid as string | undefined;
-          frontendContextUuid = content.frontend_context_uuid as string | undefined;
+        if (text) {
+          chunker.push(text);
         }
 
         if (backendUuid || frontendContextUuid) {

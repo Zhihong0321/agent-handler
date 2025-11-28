@@ -99,8 +99,21 @@
       </div>
       <div class="row">
         <div class="field">
+          <label for="agent-type">Agent Type</label>
+          <select id="agent-type">
+            <option value="perplexity">Perplexity</option>
+            <option value="gemini">Gemini</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="agent-account">Account</label>
           <select id="agent-account"></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="agent-gems">Custom GEMS (gem://URL)</label>
+          <input id="agent-gems" placeholder="gem://61e010447d16" />
         </div>
         <div class="field">
           <label for="agent-collection">Space (collection_uuid)</label>
@@ -182,6 +195,8 @@
   </section>
 
   <script>
+    const agentType = document.getElementById("agent-type");
+    const agentGems = document.getElementById("agent-gems");
     const agentAccount = document.getElementById("agent-account");
 
     const agentCollection = document.getElementById("agent-collection");
@@ -213,16 +228,29 @@
       accountList.innerHTML = "";
       agentAccount.innerHTML = "";
       const warning = document.getElementById("account-warning");
+      const selectedAgentType = agentType.value;
+      
       if (!accounts.length && !defaultAccount) {
-        warning.textContent = "Set DEFAULT_ACCOUNT_NAME in env or pick an account via Refresh.";
+        if (selectedAgentType === "gemini") {
+          warning.textContent = "Using default Gemini account 'primary'. Set DEFAULT_GEMINI_ACCOUNT in env to customize.";
+        } else {
+          warning.textContent = "Set DEFAULT_ACCOUNT_NAME in env or pick an account via Refresh.";
+        }
       } else {
         warning.textContent = "";
       }
+      
       if (!accounts.length) {
-        accountList.innerHTML = "<div class='muted'>No accounts (use manual entry)</div>";
-        agentAccount.innerHTML = "<option value=''>Type account manually below</option>";
+        if (selectedAgentType === "gemini") {
+          accountList.innerHTML = "<div class='muted'>Using default account: primary</div>";
+          agentAccount.innerHTML = "<option value='primary' selected>primary</option>";
+        } else {
+          accountList.innerHTML = "<div class='muted'>No accounts (use manual entry)</div>";
+          agentAccount.innerHTML = "<option value=''>Type account manually below</option>";
+        }
         return;
       }
+      
       accounts.forEach((a) => {
         const div = document.createElement("div");
         div.className = "card";
@@ -351,29 +379,39 @@
         defaultAccount = defaults.defaultAccount || "";
         const wrapper = await fetch("/health").then((r) => r.json());
         wrapperStatus = wrapper.wrapper?.status || "unknown";
-        const accRes = await fetch("/api/wrapper/accounts");
+        
+        const selectedAgentType = agentType.value;
+        const accRes = await fetch(`/api/wrapper/accounts?agentType=${selectedAgentType}`);
         const acc = await accRes.json();
+        
         if (acc.accounts) {
           accounts = acc.accounts;
         } else if (acc.error) {
           accountList.innerHTML = `<div class='muted'>Accounts unavailable: ${acc.error}${acc.detail ? " - " + acc.detail : ""}${acc.status ? " (status " + acc.status + ")" : ""}${acc.body ? " " + JSON.stringify(acc.body) : ""}</div>`;
         }
-        const useAccount =
-          agentAccount.value || (accounts[0] && (accounts[0].account_name || accounts[0].name)) || defaultAccount;
-        if (!useAccount) {
-          spaceList.innerHTML = "<div class='muted'>Set account and verify before loading spaces.</div>";
-          renderAccounts();
-          return;
-        }
-        const spacesRes = await fetch(`/api/wrapper/spaces?accountName=${encodeURIComponent(useAccount || "")}`);
-        const sp = await spacesRes.json();
-        if (sp.spaces) {
-          spaces = sp.spaces;
-        } else if (sp.error) {
-          spaceList.innerHTML = `<div class='muted'>Spaces unavailable: ${sp.error}${sp.detail ? " - " + sp.detail : ""}${sp.status ? " (status " + sp.status + ")" : ""}${sp.body ? " " + JSON.stringify(sp.body) : ""}</div>`;
-        }
+        
         renderAccounts();
-        renderSpaces();
+        
+        // Only load spaces for Perplexity agents
+        if (selectedAgentType === "perplexity") {
+          const useAccount =
+            agentAccount.value || (accounts[0] && (accounts[0].account_name || accounts[0].name)) || defaultAccount;
+          if (!useAccount) {
+            spaceList.innerHTML = "<div class='muted'>Set account and verify before loading spaces.</div>";
+            return;
+          }
+          const spacesRes = await fetch(`/api/wrapper/spaces?accountName=${encodeURIComponent(useAccount || "")}`);
+          const sp = await spacesRes.json();
+          if (sp.spaces) {
+            spaces = sp.spaces;
+          } else if (sp.error) {
+            spaceList.innerHTML = `<div class='muted'>Spaces unavailable: ${sp.error}${sp.detail ? " - " + sp.detail : ""}${sp.status ? " (status " + sp.status + ")" : ""}${sp.body ? " " + JSON.stringify(sp.body) : ""}</div>`;
+          }
+          renderSpaces();
+        } else {
+          // For Gemini agents, spaces are not applicable
+          spaceList.innerHTML = "<div class='muted'>Spaces not applicable for Gemini agents</div>";
+        }
       } catch (err) {
         log({ error: err.message });
       }
@@ -402,15 +440,32 @@
       }
     }
 
+    // Handle agent type change
+    agentType.addEventListener("change", () => {
+      fetchAccountsAndSpaces();
+    });
+
     saveAgentBtn.addEventListener("click", async () => {
       try {
-        if (!agentAccount.value && !defaultAccount) {
-          alert("Set and verify an account before saving an agent.");
-          return;
+        const selectedAgentType = agentType.value;
+        
+        if (selectedAgentType === "gemini") {
+          // Gemini agents always have primary account
+          if (!agentName.value) {
+            alert("Agent name is required.");
+            return;
+          }
+        } else {
+          if (!agentAccount.value && !defaultAccount) {
+            alert("Set and verify an account before saving an agent.");
+            return;
+          }
         }
+        
         const payload = {
           name: agentName.value,
-          accountName: agentAccount.value || defaultAccount,
+          agentType: selectedAgentType,
+          accountName: selectedAgentType === "gemini" ? "primary" : (agentAccount.value || defaultAccount),
           collectionUuid: agentCollection.value || undefined,
           mode: agentMode.value || undefined,
           sources: agentSources.value || undefined,
@@ -418,7 +473,12 @@
           model: agentModel.value || undefined,
           answerOnly: agentAnswerOnly.checked,
           incognito: agentIncognito.checked,
+          // Add GEMS field for Gemini agents
+          ...(selectedAgentType === "gemini" && agentGems.value ? { 
+            systemPrompt: agentGems.value 
+          } : {})
         };
+        
         if (!payload.accountName) {
           alert("Account name is required. Set DEFAULT_ACCOUNT_NAME or select an account.");
           return;

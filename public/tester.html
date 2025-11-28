@@ -100,6 +100,18 @@
       color: var(--text);
       border-bottom-left-radius: 4px;
     }
+    .bubble.bot strong {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .bubble.bot .citation {
+      color: var(--muted);
+      font-size: 11px;
+      background: rgba(255,255,255,0.1);
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid rgba(56,189,248,0.2);
+    }
     
     /* Input Area */
     footer {
@@ -566,7 +578,28 @@
     function appendBubble(text, role) {
         const div = document.createElement('div');
         div.className = `bubble ${role}`;
-        div.textContent = text;
+        // Preserve markup language (HTML, markdown, etc.)
+        if (text.includes('**') || text.includes('*') || text.includes('[') || text.includes('<')) {
+            // Contains markup - render as HTML (convert markdown-like formatting)
+            let html = text
+                // Bold: **text** -> <strong>text</strong>
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                // Italic: *text* -> <em>text</em>
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                // Citations: [cite_start]...[cite: 5] -> <span class="citation">...</span>
+                .replace(/\[cite_start\](.*?)\[cite:\s*(\d+)\]/g, '<span class="citation" title="Citation $2">$1</span>')
+                // Double line breaks -> paragraph breaks
+                .replace(/\n\n/g, '</p><p>')
+                // Single line breaks
+                .replace(/\n/g, '<br>')
+                // Wrap in paragraphs
+                .replace(/^(?!<p>)/, '<p>')
+                .replace(/(?<!<\/p>)$/, '</p>');
+            div.innerHTML = html;
+        } else {
+            // Plain text
+            div.textContent = text;
+        }
         els.chatBox.appendChild(div);
         els.chatBox.scrollTop = els.chatBox.scrollHeight;
     }

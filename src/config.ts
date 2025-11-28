@@ -8,7 +8,11 @@ export const config = {
   perplexityBaseUrl:
     process.env.PERPLEXITY_BASE_URL ||
     "https://ee-perplexity-wrapper-production.up.railway.app",
+  geminiBaseUrl:
+    process.env.GEMINI_BASE_URL ||
+    "https://ee-gemini-api-production.up.railway.app",
   defaultAccount: process.env.DEFAULT_ACCOUNT_NAME || null,
+  defaultGeminiAccount: process.env.DEFAULT_GEMINI_ACCOUNT || "primary",
   defaultCollectionUuid: process.env.DEFAULT_COLLECTION_UUID || null,
   answerOnly: process.env.ANSWER_ONLY === "false" ? false : true,
   rateLimit: {
