@@ -54,7 +54,8 @@ async function buildServer() {
   fastify.get("/bill", async (_, reply) => {
     const jsonPath = join(process.cwd(), "bill.json");
     const data = readFileSync(jsonPath, "utf-8");
-    reply.type("application/json").send(data);
+    const parsedData = JSON.parse(data);
+    reply.send(parsedData);
   });
 
   fastify.get("/metrics", async () => {
