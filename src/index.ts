@@ -245,9 +245,16 @@ async function buildServer() {
       });
       return { reply: response.reply, raw: response.raw };
     } catch (err) {
-      request.log.error({ err, agentId }, "agent test failed");
+      const errorDetail = (err as Error).message;
+      const apiError = (err as any)?.response?.data;
+      request.log.error({ err, agentId, apiError }, "agent test failed");
       reply.code(500);
-      return { error: "agent test failed", detail: (err as Error).message };
+      return { 
+        error: "agent test failed", 
+        detail: errorDetail,
+        apiError: apiError,
+        isWrapperError: apiError ? true : false
+      };
     }
   });
 
