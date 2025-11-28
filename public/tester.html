@@ -65,7 +65,7 @@
     }
     .menu-btn { font-size: 24px; cursor: pointer; background: none; border: none; color: var(--text); padding: 0; }
     .agent-info { font-size: 16px; font-weight: 600; text-align: center; flex: 1; }
-    .feedback-btn { color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+    .description-btn { color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
 
     /* Chat Area */
     main { 
@@ -184,31 +184,37 @@
       cursor: pointer;
     }
 
-    /* Feedback Modal */
+    /* Description Modal */
     dialog {
       background: var(--header); color: var(--text);
       border: 1px solid var(--border); border-radius: 12px;
-      width: 90%; max-width: 320px;
+      width: 90%; max-width: 400px;
       padding: 0;
+      max-height: 90vh;
     }
     dialog::backdrop { background: rgba(0,0,0,0.7); }
-    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-    .modal-body textarea, .modal-body input {
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px;
-      color: var(--text);
-      font-family: inherit;
-      font-size: 14px;
-      width: 100%;
+    .modal-body { 
+      padding: 20px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 10px;
+      height: 100%;
       box-sizing: border-box;
     }
-    .modal-body textarea:focus, .modal-body input:focus {
-      outline: none;
-      border-color: var(--accent);
+    #description-content {
+      flex: 1;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      font-size: 14px;
+      color: var(--text);
+      background: rgba(0,0,0,0.2);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      min-height: 100px; /* Ensure some height */
     }
-    .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 10px; flex-shrink: 0; }
     .btn { padding: 10px 16px; border-radius: 6px; border: none; flex: 1; cursor: pointer; font-weight: 600; font-size: 14px; }
     .btn-primary { background: var(--accent); color: #0f172a; }
     .btn-secondary { background: var(--border); color: var(--text); }
@@ -238,7 +244,7 @@
         <div class="agent-info" id="chat-title">Untitled</div>
         <div style="display:flex; gap:8px;">
             <button class="menu-btn" id="delete-thread-btn" style="font-size:18px; color:var(--muted);" title="Delete Thread">🗑️</button>
-            <button class="feedback-btn" id="feedback-btn">Feedback</button>
+            <button class="description-btn" id="description-btn">Description</button>
         </div>
       </header>
 
@@ -252,15 +258,13 @@
       </footer>
   </div>
 
-  <!-- Feedback Modal -->
-  <dialog id="feedback-modal">
+  <!-- Description Modal -->
+  <dialog id="description-modal">
     <div class="modal-body">
-      <h3 style="margin-top:0;">Thread Feedback</h3>
-      <p style="font-size: 13px; color: var(--muted); margin-bottom:10px;">Leave a comment about this conversation for the admin.</p>
-      <textarea id="feedback-text" style="height: 100px; resize:vertical; min-height:60px; max-height:200px;" placeholder="E.g. Great answer, but missed the context..."></textarea>
+      <h3 style="margin-top:0; flex-shrink:0;">Agent Description</h3>
+      <div id="description-content"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="cancel-feedback">Cancel</button>
-        <button class="btn btn-primary" id="submit-feedback">Submit</button>
+        <button class="btn btn-secondary" id="close-description">Close</button>
       </div>
     </div>
   </dialog>
@@ -348,19 +352,20 @@
       chatBox: document.getElementById('chat-box'),
       input: document.getElementById('message-input'),
       sendBtn: document.getElementById('send-btn'),
-      feedbackBtn: document.getElementById('feedback-btn'),
+      descriptionBtn: document.getElementById('description-btn'),
       
       // Modals
-      feedbackModal: document.getElementById('feedback-modal'),
-      feedbackText: document.getElementById('feedback-text'),
-      cancelFeedback: document.getElementById('cancel-feedback'),
-      submitFeedback: document.getElementById('submit-feedback'),
+      descriptionModal: document.getElementById('description-modal'),
+      descriptionContent: document.getElementById('description-content'),
+      closeDescription: document.getElementById('close-description'),
       renameModal: document.getElementById('rename-modal'),
       renameInput: document.getElementById('rename-input'),
       cancelRename: document.getElementById('cancel-rename'),
       submitRename: document.getElementById('submit-rename'),
       deleteThreadBtn: document.getElementById('delete-thread-btn'),
     };
+
+    let currentAgent = null;
 
     // --- Init ---
     async function init() {
@@ -374,6 +379,7 @@
         const data = await res.json();
         const agent = (data.agents || []).find(a => a.id === config.agentId);
         if (agent) {
+          currentAgent = agent;
           els.dashAgentName.textContent = `${agent.name} Tester`;
         }
       } catch (e) { console.error(e); }
@@ -678,37 +684,13 @@
       }
     };
 
-    // --- Feedback ---
-    els.feedbackBtn.onclick = () => {
-        if (!currentThreadUuid) {
-            alert("Start a chat first to leave feedback on it.");
-            return;
-        }
-        els.feedbackModal.showModal();
+    // --- Description ---
+    els.descriptionBtn.onclick = () => {
+        if (!currentAgent) return;
+        els.descriptionContent.textContent = currentAgent.description || "No description provided for this agent.";
+        els.descriptionModal.showModal();
     };
-    els.cancelFeedback.onclick = () => els.feedbackModal.close();
-    
-    els.submitFeedback.onclick = async () => {
-        const content = els.feedbackText.value.trim();
-        if (!content) return;
-        
-        try {
-            await fetch('/api/feedback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    testerId,
-                    threadUuid: currentThreadUuid,
-                    content
-                })
-            });
-            alert('Feedback sent!');
-            els.feedbackText.value = '';
-            els.feedbackModal.close();
-        } catch (err) {
-            alert('Error sending feedback');
-        }
-    };
+    els.closeDescription.onclick = () => els.descriptionModal.close();
 
     init();
   </script>

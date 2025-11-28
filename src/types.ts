@@ -30,6 +30,7 @@ export interface AgentConfig {
   answerOnly?: boolean;
   incognito?: boolean;
   systemPrompt?: string | null; // For custom GEMS
+  description?: string | null;
 }
 
 export interface MessageRequest {

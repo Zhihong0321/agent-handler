@@ -74,9 +74,10 @@
 </head>
 <body>
   <h1>Agent Manager</h1>
+  <input type="hidden" id="editing-agent-id" />
   <div class="grid">
     <section class="panel">
-      <h3>Create New Agent</h3>
+      <h3 id="form-title">Create New Agent</h3>
       <div id="account-warning" class="muted" style="color:#f87171; margin-bottom:8px;"></div>
       
       <!-- Agent Type Selection Tabs -->
@@ -128,6 +129,12 @@
             <label for="perplexity-agent-model">Model</label>
             <input id="perplexity-agent-model" placeholder="optional" />
           </div>
+        </div>
+        <div class="field">
+            <label for="perplexity-agent-description">Description</label>
+            <textarea id="perplexity-agent-description" placeholder="Agent description (long form)..."></textarea>
+        </div>
+        <div class="row">
           <div class="field">
             <label class="muted">
               <input type="checkbox" id="perplexity-agent-answer-only" checked />
@@ -173,6 +180,10 @@
             <input id="gemini-agent-gems" placeholder="gem://61e010447d16 SolarExpert" />
           </div>
         </div>
+        <div class="field">
+            <label for="gemini-agent-description">Description</label>
+            <textarea id="gemini-agent-description" placeholder="Agent description (long form)..."></textarea>
+        </div>
         <div class="row">
           <button id="save-gemini-agent" class="save-agent-btn">Save Gemini Agent</button>
         </div>
@@ -180,6 +191,7 @@
       
       <!-- Common controls -->
       <div class="row">
+        <button id="cancel-edit" class="secondary" style="display:none; background:#f59e0b; color:black;">Cancel Edit</button>
         <button id="refresh-accounts" class="secondary">Refresh Accounts/Spaces</button>
       </div>
       <div class="logs" id="logs"></div>
@@ -330,27 +342,47 @@
           ? '<span class="badge" style="background: #8b5cf6;">Gemini</span>' 
           : '<span class="badge" style="background: #3b82f6;">Perplexity</span>';
         div.innerHTML = `${typeBadge}<strong>${a.name}</strong><span class="muted">${a.accountName}</span>`;
+        
+        // Action buttons container
+        const actions = document.createElement("div");
+        actions.style.display = "flex";
+        actions.style.flexDirection = "column";
+        actions.style.gap = "4px";
+        actions.style.alignItems = "flex-end";
+
         const testBtn = document.createElement("button");
         testBtn.className = "secondary";
         testBtn.textContent = "Test";
         testBtn.onclick = () => testAgent(a.id);
-        div.appendChild(testBtn);
+        actions.appendChild(testBtn);
+        
+        const editBtn = document.createElement("button");
+        editBtn.className = "secondary";
+        editBtn.textContent = "Edit";
+        editBtn.style.background = "#f59e0b";
+        editBtn.style.color = "#000";
+        editBtn.onclick = () => editAgent(a.id);
+        actions.appendChild(editBtn);
+
         const copyLinkBtn = document.createElement("button");
         copyLinkBtn.className = "secondary";
-        copyLinkBtn.textContent = "Copy Tester Link";
-        copyLinkBtn.style.marginTop = "6px";
+        copyLinkBtn.textContent = "Link";
+        copyLinkBtn.title = "Copy Tester Link";
         copyLinkBtn.onclick = () => {
           const link = `https://agent-handler-production.up.railway.app/tester.html?agentId=${a.id}`;
           navigator.clipboard.writeText(link);
           alert(`Tester link copied: ${link}`);
         };
-        div.appendChild(copyLinkBtn);
+        actions.appendChild(copyLinkBtn);
+
         const delBtn = document.createElement("button");
         delBtn.className = "secondary";
         delBtn.textContent = "Delete";
         delBtn.style.background = "#dc2626";
         delBtn.onclick = () => deleteAgent(a.id);
-        div.appendChild(delBtn);
+        actions.appendChild(delBtn);
+        
+        div.appendChild(actions);
         agentsContainer.appendChild(div);
       });
     }
@@ -403,14 +435,74 @@
         const data = await res.json();
         log(data);
         loadAgents();
+        if (document.getElementById("editing-agent-id").value === agentId) {
+            cancelEdit();
+        }
       } catch (err) {
         log({ error: err.message });
       }
     }
 
+    function editAgent(agentId) {
+        const agent = agents.find(a => a.id === agentId);
+        if (!agent) return;
+        
+        document.getElementById("editing-agent-id").value = agent.id;
+        document.getElementById("form-title").textContent = "Edit Agent: " + agent.name;
+        document.getElementById("cancel-edit").style.display = "inline-block";
+        
+        // Switch to appropriate tab
+        switchAgentType(agent.agentType);
+        
+        if (agent.agentType === 'perplexity') {
+            document.getElementById("perplexity-agent-name").value = agent.name || "";
+            document.getElementById("perplexity-agent-account").value = agent.accountName || "";
+            document.getElementById("perplexity-agent-collection").value = agent.collectionUuid || "";
+            document.getElementById("perplexity-agent-mode").value = agent.mode || "";
+            document.getElementById("perplexity-agent-sources").value = agent.sources || "";
+            document.getElementById("perplexity-agent-language").value = agent.language || "";
+            document.getElementById("perplexity-agent-model").value = agent.model || "";
+            document.getElementById("perplexity-agent-description").value = agent.description || "";
+            document.getElementById("perplexity-agent-answer-only").checked = !!agent.answerOnly;
+            document.getElementById("perplexity-agent-incognito").checked = !!agent.incognito;
+            
+            document.getElementById("save-perplexity-agent").textContent = "Update Perplexity Agent";
+        } else {
+            document.getElementById("gemini-agent-name").value = agent.name || "";
+            document.getElementById("gemini-agent-account").value = agent.accountName || "primary";
+            document.getElementById("gemini-agent-model").value = agent.model || "";
+            document.getElementById("gemini-agent-gems").value = agent.systemPrompt || ""; // GEMS stored in systemPrompt
+            document.getElementById("gemini-agent-description").value = agent.description || "";
+            
+            document.getElementById("save-gemini-agent").textContent = "Update Gemini Agent";
+        }
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    function cancelEdit() {
+        document.getElementById("editing-agent-id").value = "";
+        document.getElementById("form-title").textContent = "Create New Agent";
+        document.getElementById("cancel-edit").style.display = "none";
+        
+        // Clear forms
+        document.getElementById("perplexity-agent-name").value = "";
+        document.getElementById("perplexity-agent-description").value = "";
+        document.getElementById("gemini-agent-name").value = "";
+        document.getElementById("gemini-agent-gems").value = "";
+        document.getElementById("gemini-agent-description").value = "";
+        
+        // Reset buttons
+        document.getElementById("save-perplexity-agent").textContent = "Save Perplexity Agent";
+        document.getElementById("save-gemini-agent").textContent = "Save Gemini Agent";
+    }
+
     // Save Perplexity Agent
     async function savePerplexityAgent() {
+      const editingId = document.getElementById("editing-agent-id").value;
       const payload = {
+        id: editingId || undefined,
         name: document.getElementById("perplexity-agent-name").value,
         agentType: "perplexity",
         accountName: document.getElementById("perplexity-agent-account").value,
@@ -419,6 +511,7 @@
         mode: document.getElementById("perplexity-agent-mode").value || null,
         sources: document.getElementById("perplexity-agent-sources").value || null,
         language: document.getElementById("perplexity-agent-language").value || null,
+        description: document.getElementById("perplexity-agent-description").value || null,
         answerOnly: document.getElementById("perplexity-agent-answer-only").checked,
         incognito: document.getElementById("perplexity-agent-incognito").checked,
       };
@@ -433,8 +526,12 @@
         if (res.ok) {
           log({ success: data });
           loadAgents();
-          // Clear form
-          document.getElementById("perplexity-agent-name").value = "";
+          if (editingId) cancelEdit(); // Reset mode
+          else {
+            // Clear form if not editing (already handled in cancelEdit but useful here if logic changes)
+            document.getElementById("perplexity-agent-name").value = "";
+            document.getElementById("perplexity-agent-description").value = "";
+          }
         } else {
           log({ error: data });
         }
@@ -445,12 +542,15 @@
 
     // Save Gemini Agent
     async function saveGeminiAgent() {
+      const editingId = document.getElementById("editing-agent-id").value;
       const payload = {
+        id: editingId || undefined,
         name: document.getElementById("gemini-agent-name").value,
         agentType: "gemini",
         accountName: document.getElementById("gemini-agent-account").value || "primary",
         model: document.getElementById("gemini-agent-model").value || null,
         systemPrompt: document.getElementById("gemini-agent-gems").value || null,
+        description: document.getElementById("gemini-agent-description").value || null,
         // Don't include Perplexity-specific fields
       };
       log({ saving: payload });
@@ -464,9 +564,12 @@
         if (res.ok) {
           log({ success: data });
           loadAgents();
-          // Clear form
-          document.getElementById("gemini-agent-name").value = "";
-          document.getElementById("gemini-agent-gems").value = "";
+          if (editingId) cancelEdit(); // Reset mode
+          else {
+             document.getElementById("gemini-agent-name").value = "";
+             document.getElementById("gemini-agent-gems").value = "";
+             document.getElementById("gemini-agent-description").value = "";
+          }
         } else {
           log({ error: data });
         }
@@ -503,6 +606,7 @@
     document.getElementById("save-perplexity-agent").onclick = savePerplexityAgent;
     document.getElementById("save-gemini-agent").onclick = saveGeminiAgent;
     document.getElementById("refresh-accounts").onclick = refresh;
+    document.getElementById("cancel-edit").onclick = cancelEdit;
 
     // Initialize
     refresh();

@@ -54,10 +54,10 @@ class PostgresAgentStore implements IAgentStore {
     const res = await this.pool.query(
       `
         INSERT INTO agents (
-          id, name, agent_type, account_name, collection_uuid, model, mode, sources, language, answer_only, incognito, system_prompt,
+          id, name, agent_type, account_name, collection_uuid, model, mode, sources, language, answer_only, incognito, system_prompt, description,
           created_at, updated_at
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           agent_type = EXCLUDED.agent_type,
@@ -70,6 +70,7 @@ class PostgresAgentStore implements IAgentStore {
           answer_only = EXCLUDED.answer_only,
           incognito = EXCLUDED.incognito,
           system_prompt = EXCLUDED.system_prompt,
+          description = EXCLUDED.description,
           updated_at = NOW()
         RETURNING *;
       `,
@@ -86,6 +87,7 @@ class PostgresAgentStore implements IAgentStore {
         agent.answerOnly ?? null,
         agent.incognito ?? null,
         agent.systemPrompt ?? null, // For custom GEMS
+        agent.description ?? null,
       ],
     );
     return mapRow(res.rows[0]);
@@ -106,6 +108,7 @@ function mapRow(row: any): AgentConfig {
     answerOnly: row.answer_only ?? undefined,
     incognito: row.incognito ?? undefined,
     systemPrompt: row.system_prompt, // For custom GEMS
+    description: row.description,
   };
 }
 

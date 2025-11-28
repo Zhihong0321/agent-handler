@@ -111,6 +111,7 @@ export async function ensureTables() {
     -- Migrations for existing databases
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS agent_type VARCHAR(20) NOT NULL DEFAULT 'perplexity';
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS system_prompt TEXT;
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS description TEXT;
     
     -- Create indexes for better performance
     CREATE INDEX IF NOT EXISTS idx_agents_agent_type ON agents(agent_type);
