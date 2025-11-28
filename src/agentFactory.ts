@@ -54,9 +54,9 @@ export class AgentFactory {
     }
     
     // Note: For custom GEMS, systemPrompt should be passed directly from agent config
-    // Check if agent has custom GEMS (stored in agent's systemPrompt or mode field)
-    if (agent.mode && agent.mode.startsWith('gem://')) {
-      systemPrompt = agent.mode; // Use GEMS URL directly
+    // Check if agent has custom GEMS (stored in agent's systemPrompt field)
+    if (agent.systemPrompt && agent.systemPrompt.startsWith('gem://')) {
+      systemPrompt = agent.systemPrompt; // Use GEMS URL directly
     }
 
     return {
