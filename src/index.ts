@@ -101,6 +101,12 @@ async function buildServer() {
     reply.type("text/html").send(html);
   });
 
+  fastify.get("/all-chat-data", async (_, reply) => {
+    const path = join(__dirname, "..", "public", "all_chat_data.html");
+    const html = await readFile(path, "utf8");
+    reply.type("text/html").send(html);
+  });
+
   fastify.get("/api/agents", async () => {
     const agents = await Promise.resolve(agentStore.list());
     return { agents };
@@ -577,6 +583,22 @@ async function buildServer() {
     } catch (err) {
       reply.code(500);
       return { error: "Failed to delete thread", detail: (err as Error).message };
+    }
+  });
+
+  fastify.get("/api/admin/all-threads", async (request, reply) => {
+    const pool = getPool();
+    if (!pool) {
+        return { threads: [] };
+    }
+    try {
+        const res = await pool.query(
+            "SELECT * FROM tester_threads ORDER BY updated_at DESC LIMIT 1000"
+        );
+        return { threads: res.rows };
+    } catch (err) {
+        reply.code(500);
+        return { error: "Failed to fetch threads", detail: (err as Error).message };
     }
   });
 

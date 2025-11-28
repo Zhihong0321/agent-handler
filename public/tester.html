@@ -685,10 +685,29 @@
     };
 
     // --- Description ---
-    els.descriptionBtn.onclick = () => {
-        if (!currentAgent) return;
-        els.descriptionContent.textContent = currentAgent.description || "No description provided for this agent.";
+    els.descriptionBtn.onclick = async () => {
+        if (!config.agentId) return;
+        
+        // Show loading state
+        els.descriptionContent.textContent = "Loading description...";
         els.descriptionModal.showModal();
+        
+        try {
+            // Fetch fresh agent data
+            const res = await fetch('/api/agents');
+            const data = await res.json();
+            const agent = (data.agents || []).find(a => a.id === config.agentId);
+            
+            if (agent) {
+                currentAgent = agent; // Update local cache
+                els.descriptionContent.textContent = agent.description || "No description provided for this agent.";
+            } else {
+                els.descriptionContent.textContent = "Error: Agent not found.";
+            }
+        } catch (err) {
+            els.descriptionContent.textContent = "Error loading description.";
+            console.error(err);
+        }
     };
     els.closeDescription.onclick = () => els.descriptionModal.close();
 
