@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Manager</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --accent: #38bdf8;
+      --muted: #6b7280;
+      --border: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #1e293b 0, #0f172a 45%),
+                  radial-gradient(circle at 80% 10%, #0ea5e9 0, transparent 35%),
+                  radial-gradient(circle at 60% 70%, #10b981 0, transparent 25%),
+                  #0f172a;
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 { margin: 0 0 12px 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
+    .panel {
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .field label { color: var(--muted); font-size: 12px; letter-spacing: 0.3px; text-transform: uppercase; }
+    input, select, button, textarea {
+      font: inherit;
+      background: #0b1222;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      color: var(--text);
+    }
+    button {
+      background: linear-gradient(135deg, #38bdf8, #22d3ee);
+      color: #0b1222;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 10px 25px rgba(34,211,238,0.35);
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    button.secondary {
+      background: #0b1222;
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+    button:active { transform: translateY(1px); box-shadow: none; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+    .list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: #0b1222;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .muted { color: var(--muted); font-size: 13px; }
+    .logs {
+      background: #0b1222;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      max-height: 200px;
+      overflow: auto;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+    }
+    textarea { min-height: 60px; }
+    .badge { display: inline-flex; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border); background: #111827; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>Agent Manager</h1>
+  <div class="grid">
+    <section class="panel">
+      <h3>Create / Update Agent</h3>
+      <div id="account-warning" class="muted" style="color:#f87171; margin-bottom:8px;"></div>
+      <div class="field">
+        <label for="agent-name">Name</label>
+        <input id="agent-name" placeholder="Agent name" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="agent-type">Agent Type</label>
+          <select id="agent-type">
+            <option value="perplexity">Perplexity</option>
+            <option value="gemini">Gemini</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="agent-account">Account</label>
+          <select id="agent-account"></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="agent-gems">Custom GEMS (gem://URL)</label>
+          <input id="agent-gems" placeholder="gem://61e010447d16" />
+        </div>
+        <div class="field">
+          <label for="agent-collection">Space (collection_uuid)</label>
+          <select id="agent-collection">
+            <option value="">(none)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="agent-mode">Mode</label>
+          <select id="agent-mode">
+            <option value="">(default)</option>
+            <option value="auto">auto</option>
+            <option value="writing">writing</option>
+            <option value="coding">coding</option>
+            <option value="research">research</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="agent-sources">Sources</label>
+          <input id="agent-sources" placeholder="web,scholar,social" />
+        </div>
+        <div class="field">
+          <label for="agent-language">Language</label>
+          <input id="agent-language" placeholder="en-US" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="agent-model">Model</label>
+          <input id="agent-model" placeholder="optional" />
+        </div>
+        <div class="field">
+          <label class="muted">
+            <input type="checkbox" id="agent-answer-only" checked />
+            Answer only
+          </label>
+        </div>
+        <div class="field">
+          <label class="muted">
+            <input type="checkbox" id="agent-incognito" />
+            Incognito
+          </label>
+        </div>
+      </div>
+      <div class="row">
+        <button id="save-agent">Save Agent</button>
+        <button id="refresh-accounts" class="secondary">Refresh Accounts/Spaces</button>
+      </div>
+      <div class="logs" id="logs"></div>
+    </section>
+    <section class="panel">
+      <h3>Wrapper Info</h3>
+      <div class="row">
+        <div class="field">
+          <label>Accounts</label>
+          <div class="list" id="account-list"></div>
+        </div>
+        <div class="field">
+          <label>Spaces</label>
+          <div class="list" id="space-list"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <section class="panel" style="margin-top:16px;">
+    <h3>Agents</h3>
+    <div class="list" id="agents"></div>
+  </section>
+
+  <section class="panel" style="margin-top:16px;">
+    <h3>Tester Feedback</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <small class="muted">Latest feedback from testers</small>
+        <button class="secondary" id="refresh-feedback" style="padding:4px 8px; font-size:12px;">Refresh</button>
+    </div>
+    <div id="feedback-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
+  </section>
+
+  <script>
+    const agentType = document.getElementById("agent-type");
+    const agentGems = document.getElementById("agent-gems");
+    const agentAccount = document.getElementById("agent-account");
+
+    const agentCollection = document.getElementById("agent-collection");
+    const agentMode = document.getElementById("agent-mode");
+    const agentSources = document.getElementById("agent-sources");
+    const agentLanguage = document.getElementById("agent-language");
+    const agentModel = document.getElementById("agent-model");
+    const agentAnswerOnly = document.getElementById("agent-answer-only");
+    const agentIncognito = document.getElementById("agent-incognito");
+    const agentName = document.getElementById("agent-name");
+    const saveAgentBtn = document.getElementById("save-agent");
+    const refreshAccountsBtn = document.getElementById("refresh-accounts");
+    const accountList = document.getElementById("account-list");
+    const spaceList = document.getElementById("space-list");
+    const agentsContainer = document.getElementById("agents");
+    const logs = document.getElementById("logs");
+
+    let accounts = [];
+    let spaces = [];
+    let agents = [];
+    let defaultAccount = "";
+    let wrapperStatus = "unknown";
+
+    function log(obj) {
+      logs.textContent = JSON.stringify(obj, null, 2);
+    }
+
+    function renderAccounts() {
+      accountList.innerHTML = "";
+      agentAccount.innerHTML = "";
+      const warning = document.getElementById("account-warning");
+      const selectedAgentType = agentType.value;
+      
+      if (!accounts.length && !defaultAccount) {
+        if (selectedAgentType === "gemini") {
+          warning.textContent = "Using default Gemini account 'primary'. Set DEFAULT_GEMINI_ACCOUNT in env to customize.";
+        } else {
+          warning.textContent = "Set DEFAULT_ACCOUNT_NAME in env or pick an account via Refresh.";
+        }
+      } else {
+        warning.textContent = "";
+      }
+      
+      if (!accounts.length) {
+        if (selectedAgentType === "gemini") {
+          accountList.innerHTML = "<div class='muted'>Using default account: primary</div>";
+          agentAccount.innerHTML = "<option value='primary' selected>primary</option>";
+        } else {
+          accountList.innerHTML = "<div class='muted'>No accounts (use manual entry)</div>";
+          agentAccount.innerHTML = "<option value=''>Type account manually below</option>";
+        }
+        return;
+      }
+      
+      accounts.forEach((a) => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `<strong>${a.name || a.account_name || "Account"}</strong><span class="muted">${a.account_name || a.name || ""}</span>`;
+        const btn = document.createElement("button");
+        btn.className = "secondary";
+        btn.textContent = "Test";
+        btn.onclick = () => testAccount(a.account_name || a.name);
+        div.appendChild(btn);
+        accountList.appendChild(div);
+      });
+      agentAccount.innerHTML =
+        "<option value=''>Type account manually below</option>" +
+        accounts
+          .map(
+            (a) =>
+              `<option value="${a.account_name || a.name}">${a.name || a.account_name}</option>`,
+          )
+          .join("");
+    }
+
+    function renderSpaces() {
+      spaceList.innerHTML = "";
+      agentCollection.innerHTML = "<option value=''>None</option>";
+      if (!spaces.length) {
+        spaceList.innerHTML = "<div class='muted'>No spaces</div>";
+        return;
+      }
+      spaces.forEach((s) => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `<strong>${s.name || s.title || "Space"}</strong><span class="muted">${s.uuid || s.id || s.slug || ""}</span>`;
+        spaceList.appendChild(div);
+        if (s.uuid || s.id) {
+          const id = s.uuid || s.id;
+          agentCollection.innerHTML += `<option value="${id}">${s.name || s.title || id}</option>`;
+        }
+      });
+    }
+
+    function renderAgents() {
+      agentsContainer.innerHTML = "";
+      if (!agents.length) {
+        agentsContainer.innerHTML = "<div class='muted'>No agents</div>";
+        return;
+      }
+      agents.forEach((a) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div><strong>${a.name}</strong></div>
+          <div class="muted">Account: ${a.accountName}</div>
+          <div class="muted">Space: ${a.collectionUuid || "-"}</div>
+          <div class="muted">Mode: ${a.mode || "-"}, Sources: ${a.sources || "-"}</div>
+          <div class="muted">Model: ${a.model || "-"}</div>
+        `;
+        const testBox = document.createElement("textarea");
+        testBox.placeholder = "Test message";
+        testBox.value = "Hello";
+        const testBtn = document.createElement("button");
+        testBtn.textContent = "Test Agent";
+        testBtn.onclick = async () => {
+          try {
+            const res = await fetch(`/api/agents/${a.id}/test?message=${encodeURIComponent(testBox.value || "Hello")}`);
+            const data = await res.json();
+            log(data);
+            alert(data.reply ? `Reply: ${data.reply}` : data.error || "No reply");
+          } catch (err) {
+            log({ error: err.message });
+          }
+        };
+        
+        const copyLinkBtn = document.createElement("button");
+        copyLinkBtn.className = "secondary";
+        copyLinkBtn.textContent = "Copy Tester Link";
+        copyLinkBtn.style.marginTop = "6px";
+        copyLinkBtn.onclick = () => {
+            const url = `${window.location.origin}/tester.html?agentId=${a.id}&mode=${a.mode||'auto'}`;
+            navigator.clipboard.writeText(url);
+            alert("Tester link copied!");
+        };
+
+        card.appendChild(testBox);
+        const btnRow = document.createElement("div");
+        btnRow.style.display = "flex";
+        btnRow.style.gap = "6px";
+        btnRow.appendChild(testBtn);
+        btnRow.appendChild(copyLinkBtn);
+        card.appendChild(btnRow);
+        
+        agentsContainer.appendChild(card);
+      });
+    }
+    
+    async function loadFeedback() {
+        const container = document.getElementById("feedback-list");
+        try {
+            const res = await fetch("/api/feedback");
+            const data = await res.json();
+            container.innerHTML = "";
+            if (!data.feedback || !data.feedback.length) {
+                container.innerHTML = "<div class='muted'>No feedback yet</div>";
+                return;
+            }
+            data.feedback.forEach(f => {
+                const div = document.createElement("div");
+                div.className = "card";
+                div.style.flexDirection = "column";
+                div.innerHTML = `
+                    <div style="font-size:12px; color:var(--muted)">
+                        <strong>${f.tester_id}</strong> on thread ${f.thread_uuid}
+                        <span style="float:right">${new Date(f.created_at).toLocaleString()}</span>
+                    </div>
+                    <div style="margin-top:6px; white-space:pre-wrap;">${f.content}</div>
+                `;
+                container.appendChild(div);
+            });
+        } catch (err) {
+            container.innerHTML = "<div class='muted' style='color:red'>Failed to load feedback</div>";
+        }
+    }
+
+    async function fetchAccountsAndSpaces() {
+      try {
+        const defaults = await fetch("/api/wrapper/defaults").then((r) => r.json());
+        defaultAccount = defaults.defaultAccount || "";
+        const wrapper = await fetch("/health").then((r) => r.json());
+        wrapperStatus = wrapper.wrapper?.status || "unknown";
+        
+        const selectedAgentType = agentType.value;
+        const accRes = await fetch(`/api/wrapper/accounts?agentType=${selectedAgentType}`);
+        const acc = await accRes.json();
+        
+        if (acc.accounts) {
+          accounts = acc.accounts;
+        } else if (acc.error) {
+          accountList.innerHTML = `<div class='muted'>Accounts unavailable: ${acc.error}${acc.detail ? " - " + acc.detail : ""}${acc.status ? " (status " + acc.status + ")" : ""}${acc.body ? " " + JSON.stringify(acc.body) : ""}</div>`;
+        }
+        
+        renderAccounts();
+        
+        // Only load spaces for Perplexity agents
+        if (selectedAgentType === "perplexity") {
+          const useAccount =
+            agentAccount.value || (accounts[0] && (accounts[0].account_name || accounts[0].name)) || defaultAccount;
+          if (!useAccount) {
+            spaceList.innerHTML = "<div class='muted'>Set account and verify before loading spaces.</div>";
+            return;
+          }
+          const spacesRes = await fetch(`/api/wrapper/spaces?accountName=${encodeURIComponent(useAccount || "")}`);
+          const sp = await spacesRes.json();
+          if (sp.spaces) {
+            spaces = sp.spaces;
+          } else if (sp.error) {
+            spaceList.innerHTML = `<div class='muted'>Spaces unavailable: ${sp.error}${sp.detail ? " - " + sp.detail : ""}${sp.status ? " (status " + sp.status + ")" : ""}${sp.body ? " " + JSON.stringify(sp.body) : ""}</div>`;
+          }
+          renderSpaces();
+        } else {
+          // For Gemini agents, spaces are not applicable
+          spaceList.innerHTML = "<div class='muted'>Spaces not applicable for Gemini agents</div>";
+        }
+      } catch (err) {
+        log({ error: err.message });
+      }
+    }
+
+    async function loadAgents() {
+      try {
+        const res = await fetch("/api/agents");
+        const data = await res.json();
+        if (data.agents) agents = data.agents;
+        renderAgents();
+        log(data);
+      } catch (err) {
+        log({ error: err.message });
+      }
+    }
+
+    async function testAccount(name) {
+      try {
+        const res = await fetch(`/api/wrapper/accounts/${encodeURIComponent(name)}/test`, { method: "POST" });
+        const data = await res.json();
+        log(data);
+        alert(data.result ? "Account OK" : data.error || "Test failed");
+      } catch (err) {
+        log({ error: err.message });
+      }
+    }
+
+    // Handle agent type change
+    agentType.addEventListener("change", () => {
+      fetchAccountsAndSpaces();
+    });
+
+    saveAgentBtn.addEventListener("click", async () => {
+      try {
+        const selectedAgentType = agentType.value;
+        
+        if (selectedAgentType === "gemini") {
+          // Gemini agents always have primary account
+          if (!agentName.value) {
+            alert("Agent name is required.");
+            return;
+          }
+        } else {
+          if (!agentAccount.value && !defaultAccount) {
+            alert("Set and verify an account before saving an agent.");
+            return;
+          }
+        }
+        
+        const payload = {
+          name: agentName.value,
+          agentType: selectedAgentType,
+          accountName: selectedAgentType === "gemini" ? "primary" : (agentAccount.value || defaultAccount),
+          collectionUuid: agentCollection.value || undefined,
+          mode: agentMode.value || undefined,
+          sources: agentSources.value || undefined,
+          language: agentLanguage.value || undefined,
+          model: agentModel.value || undefined,
+          answerOnly: agentAnswerOnly.checked,
+          incognito: agentIncognito.checked,
+          // Add GEMS field for Gemini agents
+          ...(selectedAgentType === "gemini" && agentGems.value ? { 
+            systemPrompt: agentGems.value 
+          } : {})
+        };
+        
+        if (!payload.accountName) {
+          alert("Account name is required. Set DEFAULT_ACCOUNT_NAME or select an account.");
+          return;
+        }
+        const res = await fetch("/api/agents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        log(data);
+        if (data.agent) {
+          alert("Agent saved");
+          await loadAgents();
+        } else if (data.error) {
+          alert(`Agent error: ${data.error}`);
+        }
+      } catch (err) {
+        log({ error: err.message });
+      }
+    });
+
+    refreshAccountsBtn.addEventListener("click", () => {
+      fetchAccountsAndSpaces();
+    });
+
+    document.getElementById("refresh-feedback").addEventListener("click", loadFeedback);
+
+    fetchAccountsAndSpaces();
+    loadAgents();
+    loadFeedback();
+  </script>
+</body>
+</html>
