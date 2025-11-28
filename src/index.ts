@@ -1,7 +1,8 @@
 import Fastify from "fastify";
 import formbody from "@fastify/formbody";
 import { createParser, EventSourceMessage } from "eventsource-parser";
-import { readFile, readFileSync } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { config } from "./config";
 import { ISessionStore, sessionStorePromise } from "./sessionStore";
