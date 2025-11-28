@@ -340,7 +340,7 @@
         copyLinkBtn.textContent = "Copy Tester Link";
         copyLinkBtn.style.marginTop = "6px";
         copyLinkBtn.onclick = () => {
-          const link = `https://agent-handler-production.up.railway.app/tester.html?agent=${a.id}`;
+          const link = `https://agent-handler-production.up.railway.app/tester.html?agentId=${a.id}`;
           navigator.clipboard.writeText(link);
           alert(`Tester link copied: ${link}`);
         };
