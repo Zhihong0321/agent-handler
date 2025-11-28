@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TNB Bill Information</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .bill-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .bill-item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .bill-item:last-child {
+            border-bottom: none;
+        }
+        .kwh {
+            font-weight: bold;
+            color: #333;
+        }
+        .amount {
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .total {
+            margin-top: 20px;
+            text-align: right;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="bill-container">
+        <h1>TNB Bill Information</h1>
+        <div id="bill-data">
+            <!-- Bill data will be loaded here -->
+        </div>
+        <div class="total">Total: <span id="total-amount">RM 0.00</span></div>
+    </div>
+
+    <script>
+        // Static bill data
+        const billData = [
+            { kwh: 200, bill: 38.86 },
+            { kwh: 250, bill: 48.57 },
+            { kwh: 300, bill: 58.29 },
+            { kwh: 350, bill: 68.00 },
+            { kwh: 400, bill: 77.71 }
+        ];
+
+        // Display bill data
+        const billContainer = document.getElementById('bill-data');
+        let total = 0;
+
+        billData.forEach(item => {
+            const billItem = document.createElement('div');
+            billItem.className = 'bill-item';
+            billItem.innerHTML = `
+                <span class="kwh">${item.kwh} kWh</span>
+                <span class="amount">RM ${item.bill.toFixed(2)}</span>
+            `;
+            billContainer.appendChild(billItem);
+            total += item.bill;
+        });
+
+        document.getElementById('total-amount').textContent = `RM ${total.toFixed(2)}`;
+    </script>
+</body>
+</html>

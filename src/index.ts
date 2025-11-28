@@ -52,10 +52,9 @@ async function buildServer() {
   });
 
   fastify.get("/bill", async (_, reply) => {
-    const jsonPath = join(process.cwd(), "bill.json");
-    const data = readFileSync(jsonPath, "utf-8");
-    const parsedData = JSON.parse(data);
-    reply.send(parsedData);
+    const htmlPath = join(__dirname, "..", "public", "bill.html");
+    const html = await readFile(htmlPath, "utf8");
+    reply.type("text/html").send(html);
   });
 
   fastify.get("/metrics", async () => {
