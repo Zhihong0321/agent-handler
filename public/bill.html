@@ -18,71 +18,403 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .bill-item {
-            border-bottom: 1px solid #eee;
-            padding: 10px 0;
-            display: flex;
-            justify-content: space-between;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
         }
-        .bill-item:last-child {
-            border-bottom: none;
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
         }
-        .kwh {
+        th {
+            background-color: #f2f2f2;
             font-weight: bold;
-            color: #333;
         }
-        .amount {
-            color: #2c3e50;
-            font-weight: bold;
+        tr:hover {
+            background-color: #f5f5f5;
         }
         h1 {
             color: #2c3e50;
             text-align: center;
         }
-        .total {
+        .notes {
             margin-top: 20px;
-            text-align: right;
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #c0392b;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
         }
     </style>
 </head>
 <body>
     <div class="bill-container">
         <h1>TNB Bill Information</h1>
-        <div id="bill-data">
-            <!-- Bill data will be loaded here -->
+        
+        <table id="bill-table">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Total Usage (kWh)</th>
+                    <th>TNB Bill Total (RM)</th>
+                </tr>
+            </thead>
+            <tbody id="bill-data">
+                <!-- Bill data will be loaded here -->
+            </tbody>
+        </table>
+        
+        <div class="notes">
+            <p><strong>Note:</strong> This data represents TNB electricity bills over time showing monthly consumption and costs.</p>
         </div>
-        <div class="total">Total: <span id="total-amount">RM 0.00</span></div>
     </div>
 
     <script>
-        // Static bill data
-        const billData = [
-            { kwh: 200, bill: 38.86 },
-            { kwh: 250, bill: 48.57 },
-            { kwh: 300, bill: 58.29 },
-            { kwh: 350, bill: 68.00 },
-            { kwh: 400, bill: 77.71 }
-        ];
+        // Process CSV data from bill.csv
+        const csvData = `Month Total Usage-kwh,TNB Bill Total in RM
+200,RM38.86
+201,RM40.06
+202,RM40.26
+203,RM40.46
+204,RM40.66
+205,RM40.86
+206,RM41.06
+207,RM41.26
+208,RM41.45
+209,RM41.65
+210,RM41.85
+211,RM42.05
+212,RM42.25
+213,RM42.44
+214,RM42.64
+215,RM42.84
+216,RM43.04
+217,RM43.24
+218,RM43.43
+219,RM43.63
+220,RM43.83
+221,RM44.03
+222,RM44.22
+223,RM44.42
+224,RM44.62
+225,RM44.82
+226,RM45.01
+227,RM45.21
+228,RM45.41
+229,RM45.61
+230,RM45.81
+231,RM46.00
+232,RM46.20
+233,RM46.40
+234,RM46.60
+235,RM46.79
+236,RM46.99
+237,RM47.19
+238,RM47.39
+239,RM47.58
+240,RM47.78
+241,RM47.98
+242,RM48.18
+243,RM48.37
+244,RM48.57
+245,RM48.77
+246,RM48.97
+247,RM49.16
+248,RM49.36
+249,RM49.56
+250,RM49.76
+251,RM49.96
+252,RM50.15
+253,RM50.35
+254,RM50.55
+255,RM50.75
+256,RM50.94
+257,RM51.14
+258,RM51.34
+259,RM51.54
+260,RM51.73
+261,RM51.93
+262,RM52.13
+263,RM52.33
+264,RM52.53
+265,RM52.72
+266,RM52.92
+267,RM53.12
+268,RM53.31
+269,RM53.51
+270,RM53.71
+271,RM53.91
+272,RM54.10
+273,RM54.30
+274,RM54.50
+275,RM54.70
+276,RM54.90
+277,RM55.09
+278,RM55.29
+279,RM55.49
+280,RM55.68
+281,RM55.88
+282,RM56.08
+283,RM56.28
+284,RM56.47
+285,RM56.67
+286,RM56.87
+287,RM57.07
+288,RM57.27
+289,RM57.46
+290,RM57.66
+291,RM57.86
+292,RM58.05
+293,RM58.25
+294,RM58.45
+295,RM58.65
+296,RM58.84
+297,RM59.04
+298,RM59.24
+299,RM59.43
+300,RM59.63
+301,RM59.83
+302,RM60.03
+303,RM60.22
+304,RM60.42
+305,RM60.62
+306,RM60.81
+307,RM61.01
+308,RM61.21
+309,RM61.41
+310,RM61.60
+311,RM61.80
+312,RM62.00
+313,RM62.19
+314,RM62.39
+315,RM62.59
+316,RM62.79
+317,RM62.98
+318,RM63.18
+319,RM63.38
+320,RM63.57
+321,RM63.77
+322,RM63.97
+323,RM64.17
+324,RM64.36
+325,RM64.56
+326,RM64.76
+327,RM64.95
+328,RM65.15
+329,RM65.35
+330,RM65.54
+331,RM65.74
+332,RM65.94
+333,RM66.14
+334,RM66.33
+335,RM66.53
+336,RM66.73
+337,RM66.92
+338,RM67.12
+339,RM67.32
+340,RM67.51
+341,RM67.71
+342,RM67.91
+343,RM68.11
+344,RM68.30
+345,RM68.50
+346,RM68.69
+347,RM68.89
+348,RM69.09
+349,RM69.29
+350,RM69.48
+351,RM69.68
+352,RM69.88
+353,RM70.07
+354,RM70.27
+355,RM70.47
+356,RM70.66
+357,RM70.86
+358,RM71.06
+359,RM71.25
+360,RM71.45
+361,RM71.65
+362,RM71.84
+363,RM72.04
+364,RM72.24
+365,RM72.43
+366,RM72.63
+367,RM72.83
+368,RM73.02
+369,RM73.22
+370,RM73.42
+371,RM73.61
+372,RM73.81
+373,RM74.01
+374,RM74.20
+375,RM74.40
+376,RM74.60
+377,RM74.79
+378,RM74.99
+379,RM75.19
+380,RM75.38
+381,RM75.58
+382,RM75.77
+383,RM75.97
+384,RM76.17
+385,RM76.36
+386,RM76.56
+387,RM76.75
+388,RM76.95
+389,RM77.15
+390,RM77.34
+391,RM77.54
+392,RM77.74
+393,RM77.93
+394,RM78.13
+395,RM78.32
+396,RM78.52
+397,RM78.72
+398,RM78.91
+399,RM79.11
+400,RM79.30
+401,RM79.50
+402,RM79.70
+403,RM79.89
+404,RM80.09
+405,RM80.28
+406,RM80.48
+407,RM80.68
+408,RM80.87
+409,RM81.07
+410,RM81.26
+411,RM81.46
+412,RM81.65
+413,RM81.85
+414,RM82.05
+415,RM82.24
+416,RM82.44
+417,RM82.63
+418,RM82.83
+419,RM83.02
+420,RM83.22
+421,RM83.41
+422,RM83.61
+423,RM83.80
+424,RM84.00
+425,RM84.19
+426,RM84.39
+427,RM84.58
+428,RM84.78
+429,RM84.97
+430,RM85.17
+431,RM85.36
+432,RM85.56
+433,RM85.75
+434,RM85.95
+435,RM86.14
+436,RM86.34
+437,RM86.53
+438,RM86.73
+439,RM86.92
+440,RM87.12
+441,RM87.31
+442,RM87.51
+443,RM87.70
+444,RM87.90
+445,RM89.09
+446,RM89.28
+447,RM89.48
+448,RM89.67
+449,RM89.87
+450,RM90.06
+451,RM90.26
+452,RM90.45
+453,RM90.65
+454,RM90.84
+455,RM91.04
+456,RM91.23
+457,RM91.43
+458,RM91.62
+459,RM91.82
+460,RM92.01
+461,RM92.21
+462,RM92.40
+463,RM92.60
+464,RM92.79
+465,RM92.98
+466,RM93.18
+467,RM93.37
+468,RM93.57
+469,RM93.76
+470,RM93.96
+471,RM94.15
+472,RM94.34
+473,RM94.54
+474,RM94.73
+475,RM94.93
+476,RM95.12
+477,RM95.31
+478,RM95.51
+479,RM95.70
+480,RM95.90
+481,RM96.09
+482,RM96.28
+483,RM96.48
+484,RM96.67
+485,RM96.86
+486,RM97.06
+487,RM97.25
+488,RM97.44
+489,RM97.64
+490,RM97.83
+491,RM98.03
+492,RM98.22
+493,RM98.41
+494,RM98.61
+495,RM98.80
+496,RM99.00
+497,RM99.19
+498,RM99.38
+499,RM99.57
+500,RM99.77`;
 
-        // Display bill data
+        // Parse CSV and display
+        const lines = csvData.split('\n');
+        const headers = lines[0].split(',');
         const billContainer = document.getElementById('bill-data');
-        let total = 0;
-
-        billData.forEach(item => {
-            const billItem = document.createElement('div');
-            billItem.className = 'bill-item';
-            billItem.innerHTML = `
-                <span class="kwh">${item.kwh} kWh</span>
-                <span class="amount">RM ${item.bill.toFixed(2)}</span>
-            `;
-            billContainer.appendChild(billItem);
-            total += item.bill;
-        });
-
-        document.getElementById('total-amount').textContent = `RM ${total.toFixed(2)}`;
+        
+        let totalAmount = 0;
+        
+        // Skip header and process data rows
+        for (let i = 1; i < lines.length; i++) {
+            const row = lines[i].split(',');
+            if (row.length >= 2) {
+                const month = row[0];
+                const amount = row[1];
+                
+                // Extract numeric value from amount (remove "RM" prefix)
+                const numericAmount = parseFloat(amount.replace('RM', ''));
+                if (!isNaN(numericAmount)) {
+                    totalAmount += numericAmount;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>Month ${month}</td>
+                    <td>${amount.replace('RM', '')} kWh</td>
+                    <td>${amount}</td>
+                `;
+                billContainer.appendChild(tr);
+            }
+        }
+        
+        // Add total row
+        const totalRow = document.createElement('tr');
+        totalRow.style.fontWeight = 'bold';
+        totalRow.style.backgroundColor = '#f2f2f2';
+        totalRow.innerHTML = `
+            <td>Total</td>
+            <td>-</td>
+            <td>RM ${totalAmount.toFixed(2)}</td>
+        `;
+        billContainer.appendChild(totalRow);
     </script>
 </body>
 </html>
