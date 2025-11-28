@@ -188,6 +188,7 @@ async function buildServer() {
 
   fastify.post("/api/agents", async (request, reply) => {
     const body = (request.body || {}) as {
+      id?: string;
       name?: string;
       agentType?: string;
       accountName?: string;
@@ -199,6 +200,7 @@ async function buildServer() {
       answerOnly?: boolean;
       incognito?: boolean;
       systemPrompt?: string; // For custom GEMS
+      description?: string;
     };
     if (!body.name || !body.accountName) {
       reply.code(400);
@@ -207,6 +209,7 @@ async function buildServer() {
     try {
       const agent = await Promise.resolve(
         agentStore.create({
+          id: body.id,
           name: body.name,
           agentType: (body.agentType as any) || "perplexity", // Default to perplexity
           accountName: body.accountName,
@@ -219,6 +222,7 @@ async function buildServer() {
           incognito: body.incognito,
           // For Gemini agents, systemPrompt contains GEMS URL
           systemPrompt: body.systemPrompt,
+          description: body.description,
         }),
       );
       return { agent };
