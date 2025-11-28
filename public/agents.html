@@ -239,39 +239,57 @@
     function renderAccounts() {
       accountList.innerHTML = "";
       const warning = document.getElementById("account-warning");
+      const isGeminiActive = document.getElementById("gemini-form").style.display !== "none";
       
-      if (!accounts.length && !defaultAccount) {
+      if (!accounts.length && !defaultAccount && !isGeminiActive) {
         warning.textContent = "Set DEFAULT_ACCOUNT_NAME in env or pick an account via Refresh.";
       } else {
         warning.textContent = "";
       }
       
       if (!accounts.length) {
-        accountList.innerHTML = "<div class='muted'>No accounts (use manual entry)</div>";
-        return;
+        if (isGeminiActive) {
+          accountList.innerHTML = "<div class='muted'>Using default Gemini account: primary</div>";
+        } else {
+          accountList.innerHTML = "<div class='muted'>No accounts (use manual entry)</div>";
+        }
+      } else {
+        accounts.forEach((a) => {
+          const div = document.createElement("div");
+          div.className = "card";
+          div.innerHTML = `<strong>${a.name || a.account_name || "Account"}</strong><span class="muted">${a.account_name || a.name || ""}</span>`;
+          const btn = document.createElement("button");
+          btn.className = "secondary";
+          btn.textContent = "Test";
+          btn.onclick = () => testAccount(a.account_name || a.name);
+          div.appendChild(btn);
+          accountList.appendChild(div);
+        });
       }
       
-      accounts.forEach((a) => {
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `<strong>${a.name || a.account_name || "Account"}</strong><span class="muted">${a.account_name || a.name || ""}</span>`;
-        const btn = document.createElement("button");
-        btn.className = "secondary";
-        btn.textContent = "Test";
-        btn.onclick = () => testAccount(a.account_name || a.name);
-        div.appendChild(btn);
-        accountList.appendChild(div);
-      });
-      
-      // Update both account dropdowns
+      // Update account dropdowns
       const perplexitySelect = document.getElementById("perplexity-agent-account");
       const geminiSelect = document.getElementById("gemini-agent-account");
       
-      [perplexitySelect, geminiSelect].forEach(select => {
-        if (!select) return;
-        select.innerHTML = "<option value=''>Type account manually below</option>" +
-          accounts.map(a => `<option value="${a.account_name || a.name}">${a.name || a.account_name}</option>`).join("");
-      });
+      // Perplexity dropdown
+      if (perplexitySelect) {
+        if (!accounts.length) {
+          perplexitySelect.innerHTML = "<option value=''>Type account manually below</option>";
+        } else {
+          perplexitySelect.innerHTML = "<option value=''>Type account manually below</option>" +
+            accounts.map(a => `<option value="${a.account_name || a.name}">${a.name || a.account_name}</option>`).join("");
+        }
+      }
+      
+      // Gemini dropdown - always include "primary" option
+      if (geminiSelect) {
+        if (!accounts.length) {
+          geminiSelect.innerHTML = "<option value='primary' selected>primary (default)</option>";
+        } else {
+          geminiSelect.innerHTML = "<option value='primary'>primary (default)</option>" +
+            accounts.map(a => `<option value="${a.account_name || a.name}">${a.name || a.account_name}</option>`).join("");
+        }
+      }
     }
 
     function renderSpaces() {
