@@ -706,7 +706,7 @@ async function handleSyncQuery(
     {
       event: "perplexity.response.sync",
       customerId: body.customerId,
-      backendUuid: (response as QueryResponsePayload).backend_uuid,
+      backendUuid: (response as any).backend_uuid || response.backendUuid,
       frontendContextUuid: responseThreadId,
       raw: response,
       validation: { status: "not_validated" },
@@ -938,19 +938,19 @@ async function handleAsyncQuery(
 
         if (effectiveAgent.agentType === "gemini") {
           // Gemini response format
-          text = parsed.response || "";
+          text = (typeof parsed.response === "string" ? parsed.response : "") || "";
           frontendContextUuid = parsed.session_id as string | undefined;
         } else {
           // Perplexity response format
-          text = extractAnswer(parsed);
-          backendUuid = parsed.backend_uuid as string | undefined;
-          frontendContextUuid = parsed.frontend_context_uuid as string | undefined;
+          text = extractAnswer(parsed) || "";
+          backendUuid = (parsed.backend_uuid as string | null) || undefined;
+          frontendContextUuid = (parsed.frontend_context_uuid as string | null) || undefined;
 
           // Support new wrapper format (nested in content)
           if (!backendUuid && !frontendContextUuid && parsed.content && typeof parsed.content === "object") {
             const content = parsed.content as Record<string, unknown>;
-            backendUuid = content.backend_uuid as string | undefined;
-            frontendContextUuid = content.frontend_context_uuid as string | undefined;
+            backendUuid = (content.backend_uuid as string | null) || undefined;
+            frontendContextUuid = (content.frontend_context_uuid as string | null) || undefined;
           }
         }
 

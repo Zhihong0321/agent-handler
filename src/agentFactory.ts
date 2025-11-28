@@ -115,11 +115,11 @@ export class AgentFactory {
     
     if (agent.agentType === "gemini") {
       const geminiParams = this.mapToGeminiParams(agent, params);
-      const response = await client.querySync(geminiParams);
-      return this.mapGeminiResponse(response);
+      const response = await client.querySync(geminiParams as any);
+      return this.mapGeminiResponse(response as any);
     } else {
       const perplexityParams = this.mapToPerplexityParams(agent, params);
-      const response = await client.querySync(perplexityParams);
+      const response = await client.querySync(perplexityParams as any);
       return this.mapPerplexityResponse(response);
     }
   }
@@ -129,10 +129,10 @@ export class AgentFactory {
     
     if (agent.agentType === "gemini") {
       const geminiParams = this.mapToGeminiParams(agent, params);
-      return await client.queryAsync(geminiParams);
+      return await client.queryAsync(geminiParams as any);
     } else {
       const perplexityParams = this.mapToPerplexityParams(agent, params);
-      return await client.queryAsync(perplexityParams);
+      return await client.queryAsync(perplexityParams as any);
     }
   }
 
