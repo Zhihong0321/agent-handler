@@ -1,8 +1,8 @@
 import Fastify from "fastify";
 import formbody from "@fastify/formbody";
 import { createParser, EventSourceMessage } from "eventsource-parser";
-import { readFile } from "fs/promises";
-import path from "path";
+import { readFile, readFileSync } from "node:fs/promises";
+import { join } from "node:path";
 import { config } from "./config";
 import { ISessionStore, sessionStorePromise } from "./sessionStore";
 import { perplexityClient } from "./perplexityClient";
@@ -20,8 +20,6 @@ import { collectDbMetrics } from "./metrics";
 import { logMessage, MessageRole } from "./messageLog";
 import { buildActionPrompt } from "./prompt";
 import { agentStorePromise } from "./agentStore";
-import { readFileSync } from "fs";
-import path from "path";
 
 const rateLimiter = new RateLimiter(config.rateLimit.max, config.rateLimit.windowMs);
 
@@ -53,7 +51,7 @@ async function buildServer() {
   });
 
   fastify.get("/bill", async (_, reply) => {
-    const jsonPath = path.join(process.cwd(), "bill.json");
+    const jsonPath = join(process.cwd(), "bill.json");
     const data = readFileSync(jsonPath, "utf-8");
     reply.type("application/json").send(data);
   });
@@ -76,25 +74,25 @@ async function buildServer() {
   });
 
   fastify.get("/", async (_, reply) => {
-    const homePath = path.join(__dirname, "..", "public", "index-home.html");
+    const homePath = join(__dirname, "..", "public", "index-home.html");
     const html = await readFile(homePath, "utf8");
     reply.type("text/html").send(html);
   });
 
   fastify.get("/playground", async (_, reply) => {
-    const playgroundPath = path.join(__dirname, "..", "public", "index.html");
+    const playgroundPath = join(__dirname, "..", "public", "index.html");
     const html = await readFile(playgroundPath, "utf8");
     reply.type("text/html").send(html);
   });
 
   fastify.get("/agents", async (_, reply) => {
-    const agentsPath = path.join(__dirname, "..", "public", "agents.html");
+    const agentsPath = join(__dirname, "..", "public", "agents.html");
     const html = await readFile(agentsPath, "utf8");
     reply.type("text/html").send(html);
   });
 
   fastify.get("/tester.html", async (_, reply) => {
-    const testerPath = path.join(__dirname, "..", "public", "tester.html");
+    const testerPath = join(__dirname, "..", "public", "tester.html");
     const html = await readFile(testerPath, "utf8");
     reply.type("text/html").send(html);
   });
