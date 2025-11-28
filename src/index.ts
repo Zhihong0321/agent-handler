@@ -20,6 +20,7 @@ import { collectDbMetrics } from "./metrics";
 import { logMessage, MessageRole } from "./messageLog";
 import { buildActionPrompt } from "./prompt";
 import { agentStorePromise } from "./agentStore";
+import { getBillData } from "./billService";
 
 const rateLimiter = new RateLimiter(config.rateLimit.max, config.rateLimit.windowMs);
 
@@ -48,6 +49,11 @@ async function buildServer() {
       wrapper: wrapperStatus,
       defaultAccount: config.defaultAccount || null,
     };
+  });
+
+  fastify.get("/bill", async (_, reply) => {
+    const data = await getBillData();
+    return data;
   });
 
   fastify.get("/metrics", async () => {
