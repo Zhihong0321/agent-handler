@@ -85,6 +85,8 @@ export async function ensureTables() {
       language TEXT,
       answer_only BOOLEAN,
       incognito BOOLEAN,
+      agent_type VARCHAR(20) NOT NULL DEFAULT 'perplexity',
+      system_prompt TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -105,6 +107,17 @@ export async function ensureTables() {
       content TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    -- Migrations for existing databases
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS agent_type VARCHAR(20) NOT NULL DEFAULT 'perplexity';
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS system_prompt TEXT;
+    
+    -- Create indexes for better performance
+    CREATE INDEX IF NOT EXISTS idx_agents_agent_type ON agents(agent_type);
+    CREATE INDEX IF NOT EXISTS idx_agents_system_prompt ON agents(system_prompt);
+    
+    -- Update existing records to default to 'perplexity' for backward compatibility
+    UPDATE agents SET agent_type = 'perplexity' WHERE agent_type IS NULL;
   `);
       console.log("Database tables initialized successfully");
     } catch (err) {
